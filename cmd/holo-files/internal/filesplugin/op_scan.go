@@ -29,10 +29,10 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
-// ScanRepo returns a slice of all the Entities.
-func (p FilesPlugin) ScanRepo() []*Entity {
+// ScanRepo returns a slice of all the FilesEntity entities.
+func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	//walk over the resource directory to find resources (and thus the corresponding entities)
-	entities := make(map[string]*Entity)
+	entities := make(map[string]*FilesEntity)
 	resourceDir := p.resourceDirectory()
 	filepath.Walk(resourceDir, func(resourcePath string, resourceFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
@@ -56,7 +56,7 @@ func (p FilesPlugin) ScanRepo() []*Entity {
 			return nil
 		}
 
-		//create new Entity if necessary and store the resource in it
+		//create new FilesEntity if necessary and store the resource in it
 		resource := p.NewResource(resourcePath)
 		entityPath := resource.EntityPath()
 		if entities[entityPath] == nil {
@@ -95,7 +95,7 @@ func (p FilesPlugin) ScanRepo() []*Entity {
 	})
 
 	//flatten result into list
-	result := make([]*Entity, 0, len(entities))
+	result := make([]*FilesEntity, 0, len(entities))
 	for _, entity := range entities {
 		result = append(result, entity)
 	}
@@ -104,7 +104,7 @@ func (p FilesPlugin) ScanRepo() []*Entity {
 	return result
 }
 
-type entityList []*Entity
+type entityList []*FilesEntity
 
 func (f entityList) Len() int           { return len(f) }
 func (f entityList) Less(i, j int) bool { return f[i].relPath < f[j].relPath }

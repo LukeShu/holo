@@ -29,9 +29,11 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-// Entity represents a configuration file that can be provisioned by holo-files.
-type Entity struct {
-	relPath   string // the entity path relative to the plugin.targetDirectory()
+// FilesEntity implements holo.Entity.
+//
+// It represents a configuration file that can be provisioned by Holo.
+type FilesEntity struct {
+	relPath   string
 	resources Resources
 	plugin    FilesPlugin
 }
@@ -39,8 +41,11 @@ type Entity struct {
 // NewEntity creates a Entity instance for which a path is known.
 //
 //    entity := p.NewEntity("etc/locale.conf")
-func (p FilesPlugin) NewEntity(relPath string) *Entity {
-	return &Entity{relPath: relPath, plugin: p}
+func (p FilesPlugin) NewEntity(relPath string) *FilesEntity {
+	return &FilesEntity{
+		relPath: relPath,
+		plugin:  p,
+	}
 }
 
 // PathIn returns the path to this entity relative to the given
@@ -51,30 +56,31 @@ func (p FilesPlugin) NewEntity(relPath string) *Entity {
 //        basePath        = entity.pathIn(entity.plugin.baseDirectory())        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
 //        provisionedPath = entity.pathIn(entity.plugin.provisionedDirectory()) // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
 //    )
-func (entity *Entity) PathIn(directory string) string {
+func (entity *FilesEntity) PathIn(directory string) string {
 	return filepath.Join(directory, entity.relPath)
 }
 
-// AddResource registers a new resource in this Entity instance.
-func (entity *Entity) AddResource(resource Resource) {
-	entity.resources = append(entity.resources, resource)
+// AddResource registers a new resource in this FilesEntity instance.
+func (entity *FilesEntity) AddResource(entry Resource) {
+	entity.resources = append(entity.resources, entry)
 }
 
-// Resources returns an ordered list of all resources for this Entity.
-func (entity *Entity) Resources() Resources {
+// Resources returns an ordered list of all resources for this
+// FilesEntity.
+func (entity *FilesEntity) Resources() []Resource {
 	sort.Sort(entity.resources)
 	return entity.resources
 }
 
 // EntityID returns the entity ID for this entity.
-func (entity *Entity) EntityID() string {
+func (entity *FilesEntity) EntityID() string {
 	return "file:" + entity.PathIn("/")
 }
 
 // EntityAction returns a verb describing the action to be taken when
 // applying this entity, and optionally a reason justifying that
 // action.
-func (entity *Entity) EntityAction() (string, string) {
+func (entity *FilesEntity) EntityAction() (string, string) {
 	if len(entity.resources) == 0 {
 		_, _, assessment := entity.scanOrphan()
 		return "Scrubbing", assessment
@@ -84,7 +90,7 @@ func (entity *Entity) EntityAction() (string, string) {
 
 // EntitySource returns a list of resourc filenames that make up the
 // entity.
-func (entity *Entity) EntitySource() []string {
+func (entity *FilesEntity) EntitySource() []string {
 	if len(entity.resources) == 0 {
 		return nil
 	}
@@ -97,7 +103,7 @@ func (entity *Entity) EntitySource() []string {
 
 // EntityUserInfo returns a list of key/value pairs that will be shown
 // to the user during `holo scan`.
-func (entity *Entity) EntityUserInfo() (r []holo.KV) {
+func (entity *FilesEntity) EntityUserInfo() (r []holo.KV) {
 	if len(entity.resources) == 0 {
 		_, strategy, _ := entity.scanOrphan()
 		r = append(r, holo.KV{strategy, entity.PathIn(entity.plugin.baseDirectory())})
@@ -111,7 +117,7 @@ func (entity *Entity) EntityUserInfo() (r []holo.KV) {
 }
 
 //Apply applies the entity.
-func (entity *Entity) Apply(withForce bool, stdout, stderr io.Writer) holo.ApplyResult {
+func (entity *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.ApplyResult {
 	// BUG(lukeshu): FilesEntity.Apply: We hide errors here to
 	// match the upstream behavior of holo-files:
 	// https://github.com/holocm/holo/issues/19

@@ -30,7 +30,7 @@ import (
 // scanOrphan locates an entity for a given orphaned entity and
 // assesses the situation. This logic is grouped in one function
 // because it's used by both `holo scan` and `holo apply`.
-func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
+func (entity *FilesEntity) scanOrphan() (targetPath, strategy, assessment string) {
 	targetPath = entity.PathIn(entity.plugin.targetDirectory())
 	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
@@ -39,7 +39,7 @@ func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
 }
 
 // applyOrphan cleans up an orphaned entity.
-func (entity *Entity) applyOrphan() []error {
+func (entity *FilesEntity) applyOrphan() []error {
 	_, strategy, _ := entity.scanOrphan()
 	basePath := entity.PathIn(entity.plugin.baseDirectory())
 
@@ -93,6 +93,7 @@ func (entity *Entity) applyOrphan() []error {
 		appendError(fileutil.MoveFile(basePath, current.Path))
 	}
 
-	//TODO: cleanup empty directories below BaseDirectory() and ProvisionedDirectory()
+	// TODO(majewsky): cleanup empty directories below
+	// BaseDirectory() and ProvisionedDirectory()
 	return errs
 }

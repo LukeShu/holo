@@ -32,12 +32,12 @@ import (
 )
 
 // applyNonOrphan performs the complete application algorithm for the
-// given Entity.  This includes taking a copy of the base if
+// given FilesEntity.  This includes taking a copy of the base if
 // necessary, applying all resources, and saving the result in the
 // target path with the correct file metadata.
-func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
-	//step 1: check if a system update installed a new version of the stock
-	//configuration
+func (entity *FilesEntity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
+	// step 1: check if a system update installed a new version of
+	// the stock configuration
 	//
 	// This has to come first because it might shuffle some files
 	// around, and if we do anything else first, we might end up
@@ -74,8 +74,8 @@ func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
 
 	////////////////////////////////////////////////////////////////////////
 
-	//step 1: if we don't have a base yet, the file at current *is*
-	//the base which we have to copy now
+	// step 1: if we don't have a base yet, the file at current
+	// *is* the base which we have to copy now
 	if !base.Manageable && current.Manageable {
 		baseDir := filepath.Dir(base.Path)
 		err := os.MkdirAll(baseDir, 0755)
@@ -96,43 +96,45 @@ func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
 		return nil, errors.New("skipping target: not a manageable file")
 	}
 
-	//step 2: make sure there is a current file (unless --force)
+	// step 2: make sure there is a current file (unless --force)
 	if !current.Manageable {
 		if !withForce {
 			return holo.ApplyExternallyDeleted, nil
 		}
 	}
 
-	//step 3: check if a system update installed a new version of the stock
-	//configuration
+	// step 3: check if a system update installed a new version of
+	// the stock configuration
 	if newBase.Manageable {
-		//an updated stock configuration is available at newBase.Path
-		//(but show it to the user as newBasePath)
+		// an updated stock configuration is available at
+		// newBase.Path (but show it to the user as
+		// newBasePath)
 		fmt.Printf(">> found updated target base: %s -> %s\n", newBasePath, base.Path)
 		err := newBase.Write(base.Path)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot copy %s to %s: %v", newBase.Path, base.Path, err)
 		}
-		_ = os.Remove(newBase.Path) //this can fail silently
+		_ = os.Remove(newBase.Path) // this can fail silently
 		newBase.Path = base.Path
 		base = newBase
 	}
 
-	//step 4: apply the resources *if* the version at current is the one
-	//installed by the package (which can be found at base); complain if
-	//the user made any changes to config files governed by holo (this check is
-	//overridden by the --force option)
+	// step 4: apply the resources *iff* the version at
+	// current.Path is the one installed by the package (which can
+	// be found at base.Path); complain if the user made any
+	// changes to config files governed by holo (this check is
+	// overridden by the --force option)
 
-	//render desired state of entity
+	// render desired state of entity
 	desired, err := entity.GetDesired(base)
 	if err != nil {
 		return nil, err
 	}
 
-	//compare it against the current expected state (a reference
-	//file for this must exist at this point); normally this will
-	//be the last-provisioned version, but if we've never
-	//provisioned it before, then it is the base version
+	// compare it against the current expected state (a reference
+	// file for this must exist at this point); normally this will
+	// be the last-provisioned version, but if we've never
+	// provisioned it before, then it is the base version
 	expected := provisioned
 	if !provisioned.Manageable {
 		expected = base
@@ -143,8 +145,8 @@ func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
 		}
 	}
 
-	//save a copy of the provisioned config file to check for manual
-	//modifications in the next Apply() run
+	// save a copy of the provisioned config file to check for
+	// manual modifications in the next Apply() run
 	if !desired.EqualTo(provisioned) {
 		provisionedDir := filepath.Dir(provisioned.Path)
 		err = os.MkdirAll(provisionedDir, 0755)
@@ -158,15 +160,16 @@ func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
 	}
 
 	if !desired.EqualTo(current) {
-		//write the result buffer to the target and copy
-		//owners/permissions from base file to target file
+		// write the result buffer to the target and copy
+		// owners/permissions from base file to target file
 		newTargetPath := current.Path + ".holonew"
 		err = desired.Write(newTargetPath)
 		if err != nil {
 			return nil, err
 		}
-		//move $target.holonew -> $target atomically (to ensure that there is
-		//always a valid file at $target)
+		// move $target.holonew -> $target atomically (to
+		// ensure that there is always a valid file at
+		// $target)
 		err = os.Rename(newTargetPath, current.Path)
 		if err != nil {
 			return nil, err
@@ -178,24 +181,24 @@ func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
 
 //GetBase return the package manager-supplied base version of the
 //entity, as recorded the last time it was provisioned.
-func (entity *Entity) GetBase() (fileutil.FileBuffer, error) {
+func (entity *FilesEntity) GetBase() (fileutil.FileBuffer, error) {
 	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.baseDirectory()))
 }
 
 //GetProvisioned returns the recorded last-provisioned state of the
 //entity.
-func (entity *Entity) GetProvisioned() (fileutil.FileBuffer, error) {
+func (entity *FilesEntity) GetProvisioned() (fileutil.FileBuffer, error) {
 	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.provisionedDirectory()))
 }
 
 //GetCurrent returns the current version of the entity.
-func (entity *Entity) GetCurrent() (fileutil.FileBuffer, error) {
+func (entity *FilesEntity) GetCurrent() (fileutil.FileBuffer, error) {
 	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.targetDirectory()))
 }
 
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
-func (entity *Entity) GetNewBase() (path string, buf fileutil.FileBuffer, err error) {
+func (entity *FilesEntity) GetNewBase() (path string, buf fileutil.FileBuffer, err error) {
 	realPath, path, err := GetPackageManager(entity.plugin.targetDirectory()).FindUpdatedTargetBase(entity.PathIn(entity.plugin.targetDirectory()))
 	if err != nil {
 		return
@@ -207,8 +210,8 @@ func (entity *Entity) GetNewBase() (path string, buf fileutil.FileBuffer, err er
 	return
 }
 
-//GetDesired applies all the resources for this Entity onto the base.
-func (entity *Entity) GetDesired(base fileutil.FileBuffer) (fileutil.FileBuffer, error) {
+//GetDesired applies all the resources for this FilesEntity onto the base.
+func (entity *FilesEntity) GetDesired(base fileutil.FileBuffer) (fileutil.FileBuffer, error) {
 	resources := entity.Resources()
 
 	// Optimization: check if we can skip any application steps
@@ -220,12 +223,12 @@ func (entity *Entity) GetDesired(base fileutil.FileBuffer) (fileutil.FileBuffer,
 	}
 	resources = resources[firstStep:]
 
-	//load the base into a buffer as the start for the application
-	//algorithm
+	// load the base into a buffer as the start for the
+	// application algorithm
 	buffer := base
 	buffer.Path = entity.PathIn(entity.plugin.targetDirectory())
 
-	//apply all the applicable resources in order
+	// apply all the applicable resources in order
 	var err error
 	for _, resource := range resources {
 		buffer, err = resource.ApplyTo(buffer)

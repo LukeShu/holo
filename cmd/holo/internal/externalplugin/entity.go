@@ -75,7 +75,7 @@ func (e *Entity) MatchesSelector(value string) bool {
 //PrintReport prints the scan report describing this Entity.
 func (e *Entity) PrintReport(withAction bool) {
 	//print initial line with action and entity ID
-	//(note that Stdout != os.Stdout)
+	//(note that output.Stdout != os.Stdout)
 	var lineFormat string
 	if e.actionVerb == "" || !withAction {
 		lineFormat = "%12s %s\n"

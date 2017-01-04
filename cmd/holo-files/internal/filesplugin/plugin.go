@@ -69,14 +69,14 @@ func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string
 	return new, cur
 }
 
-func (p FilesPlugin) getEntity(entityID string) *Entity {
+func (p FilesPlugin) getEntity(entityID string) *FilesEntity {
 	entities := p.ScanRepo()
 	if entities == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
 		os.Exit(1)
 	}
-	var selectedEntity *Entity
+	var selectedEntity *FilesEntity
 	for _, entity := range entities {
 		if entity.EntityID() == entityID {
 			selectedEntity = entity
