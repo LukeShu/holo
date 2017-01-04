@@ -6,47 +6,36 @@ import (
 	"os"
 )
 
-func applyApplied() {
-	os.Exit(0)
+type applyError struct {
+	error
 }
 
-func applyAlreadyApplied() {
+func (e applyError) isApplyResult() {}
+
+func (e applyError) ExitCode() int {
+	return 1
+}
+
+func NewApplyError(err error) ApplyError {
+	return applyError{err}
+}
+
+func (a ApplyMessage) isApplyResult() {}
+
+func (e ApplyMessage) ExitCode() int {
+	return 0
+}
+
+func (e ApplyMessage) Send() {
 	file := os.NewFile(3, "/dev/fd/3")
-	_, err := io.WriteString(file, "not changed\n")
+	_, err := io.WriteString(file, e.msg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
 	}
 	os.Exit(0)
 }
 
-func applyExternallyChanged() {
-	file := os.NewFile(3, "/dev/fd/3")
-	_, err := io.WriteString(file, "requires --force to overwrite\n")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-	}
-	os.Exit(0)
-}
+type applyApplied struct{}
 
-func applyExternallyDeleted() {
-	file := os.NewFile(3, "/dev/fd/3")
-	_, err := io.WriteString(file, "requires --force to restore\n")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-	}
-	os.Exit(0)
-}
-
-type applyResult func()
-
-func (fn applyResult) isApplyResult() {}
-func (fn applyResult) Exit() {
-	fn()
-}
-
-func applyErr(n int) ApplyResult {
-	if n < 1 {
-		panic("n < 1")
-	}
-	return applyResult(func() { os.Exit(n) })
-}
+func (e applyApplied) isApplyResult() {}
+func (e applyApplied) ExitCode() int  { return 0 }

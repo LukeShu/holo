@@ -58,9 +58,17 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 			}
 		}
 	case "apply":
-		plugin.HoloApply(os.Args[2], false, os.Stdout, os.Stderr).Exit()
+		result := plugin.HoloApply(os.Args[2], false, os.Stdout, os.Stderr)
+		if msg, ok := result.(holo.ApplyMessage); ok {
+			msg.Send()
+		}
+		os.Exit(result.ExitCode())
 	case "force-apply":
-		plugin.HoloApply(os.Args[2], true, os.Stdout, os.Stderr).Exit()
+		result := plugin.HoloApply(os.Args[2], true, os.Stdout, os.Stderr)
+		if msg, ok := result.(holo.ApplyMessage); ok {
+			msg.Send()
+		}
+		os.Exit(result.ExitCode())
 	case "diff":
 		new, cur := plugin.HoloDiff(os.Args[2])
 		if new == "" && cur == "" {

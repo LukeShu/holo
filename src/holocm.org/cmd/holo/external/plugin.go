@@ -194,10 +194,10 @@ func (p *Plugin) HoloApply(entityID string, withForce bool, stdout, stderr io.Wr
 	cmdText, err := p.RunCommandWithFD3([]string{command, entityID}, stdout, stderr)
 	if err != nil {
 		output.Errorf(stderr, err.Error())
-		return holo.ApplyErr(1)
+		return holo.NewApplyError(err)
 	}
 
-	var result = holo.ApplyApplied
+	var result holo.ApplyResult = holo.ApplyApplied
 	if err == nil {
 		cmdLines := strings.Split(cmdText, "\n")
 		for _, line := range cmdLines {

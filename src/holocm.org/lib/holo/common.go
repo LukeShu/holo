@@ -16,34 +16,40 @@ type Runtime struct {
 
 type ApplyResult interface {
 	isApplyResult()
-	Exit()
+	ExitCode() int
+}
+
+type ApplyMessage struct {
+	msg string
+}
+
+type ApplyError interface {
+	ApplyResult
+	error
 }
 
 var (
 	// Indicates that the entity has been successfully modified to
 	// be in the desired state.
-	ApplyApplied ApplyResult = applyResult(applyApplied)
-
-	// Indicates that there was an error modifying the entity.
-	ApplyErr func(n int) ApplyResult = applyErr
+	ApplyApplied = applyApplied{}
 
 	// Indicates that the entity is already in the desired state,
 	// so no changes have been made. Holo will format its output
 	// accordingly (at the time of this writing, by omitting the
 	// entity from the output).
-	ApplyAlreadyApplied ApplyResult = applyResult(applyAlreadyApplied)
+	ApplyAlreadyApplied = ApplyMessage{"not changed\n"}
 
 	// Indicates that the entity was provisioned by this plugin,
 	// but has been changed by a user or external application
 	// since then.  Holo will output an error message indicating
 	// that "--force" is needed to overwrite these manual changes.
-	ApplyExternallyChanged ApplyResult = applyResult(applyExternallyChanged)
+	ApplyExternallyChanged = ApplyMessage{"requires --force to overwrite\n"}
 
 	// Indicateq that the entity was provisioned by this plugin,
 	// but has been deleted by the user or external application
 	// since then.  Holo will output an error message indicating
 	// that "--force" is needed to overwrite these manual changes.
-	ApplyExternallyDeleted ApplyResult = applyResult(applyExternallyDeleted)
+	ApplyExternallyDeleted = ApplyMessage{"requires --force to restore\n"}
 )
 
 type KV struct {
