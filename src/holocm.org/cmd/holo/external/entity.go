@@ -134,7 +134,7 @@ func (e *Entity) Apply(withForce bool) {
 	case holo.ApplyExternallyChanged:
 		output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
 		showReport = false
-		showDiff = false
+		showDiff = true
 	case holo.ApplyExternallyDeleted:
 		output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
 		showReport = true
