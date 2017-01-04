@@ -25,7 +25,7 @@ man/%: doc/%.pod | man
 		$< $@
 test: check # just a synonym
 check: all util/holo-test
-	GOPATH=$(abspath .) go test holocm.org/cmd/holo/impl
+	GOPATH=$(abspath .) go test holocm.org/cmd/holo
 	HOLO_BINARY=../../bin/holo bash util/holo-test holo $(sort $(wildcard test/??-*))
 .PHONY: test check
 
