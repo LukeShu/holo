@@ -22,7 +22,7 @@ package filesplugin
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"path/filepath"
 	"sort"
 
@@ -111,7 +111,7 @@ func (entity *Entity) EntityUserInfo() (r []holo.KV) {
 }
 
 //Apply applies the entity.
-func (entity *Entity) Apply(withForce bool) holo.ApplyResult {
+func (entity *Entity) Apply(withForce bool, stdout, stderr io.Writer) holo.ApplyResult {
 	// BUG(lukeshu): FilesEntity.Apply: We hide errors here to
 	// match the upstream behavior of holo-files:
 	// https://github.com/holocm/holo/issues/19
@@ -120,7 +120,7 @@ func (entity *Entity) Apply(withForce bool) holo.ApplyResult {
 		errs := entity.applyOrphan()
 		if len(errs) > 0 {
 			for _, err := range errs {
-				fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
+				fmt.Fprintf(stderr, "!! %s\n", err.Error())
 			}
 			//return holo.ApplyErr(1)
 			return holo.ApplyApplied
@@ -130,7 +130,7 @@ func (entity *Entity) Apply(withForce bool) holo.ApplyResult {
 		result, err := entity.applyNonOrphan(withForce)
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
+			fmt.Fprintf(stderr, "!! %s\n", err.Error())
 			//return holo.ApplyErr(1)
 			return holo.ApplyApplied
 		}

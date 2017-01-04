@@ -56,8 +56,8 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 }
 
 // HoloApply provisions the given entity.
-func (p FilesPlugin) HoloApply(entityID string, force bool, stdout io.Writer, stderr io.Writer) holo.ApplyResult {
-	return p.getEntity(entityID).Apply(force)
+func (p FilesPlugin) HoloApply(entityID string, force bool, stdout, stderr io.Writer) holo.ApplyResult {
+	return p.getEntity(entityID).Apply(force, stdout, stderr)
 }
 
 // HoloDiff returns reference files to compare the (expected state,

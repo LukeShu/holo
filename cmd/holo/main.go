@@ -25,8 +25,10 @@ import (
 	"io"
 	"os"
 
+	"github.com/holocm/holo/cmd/holo/internal/externalplugin"
 	"github.com/holocm/holo/cmd/holo/internal/impl"
 	"github.com/holocm/holo/cmd/holo/internal/output"
+	"github.com/holocm/holo/lib/holo"
 )
 
 //this is populated at compile-time, see Makefile
@@ -57,7 +59,7 @@ func Main() (exitCode int) {
 	}
 
 	//check that it is a known command word
-	var command func([]*impl.Entity, map[int]bool) int
+	var command func([]holo.Entity, map[int]bool) int
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
@@ -106,9 +108,9 @@ func Main() (exitCode int) {
 		}
 
 		//ask all plugins to scan for entities
-		var entities []*impl.Entity
+		var entities []holo.Entity
 		for _, plugin := range config.Plugins {
-			pluginEntities := plugin.Scan()
+			pluginEntities, _ := plugin.HoloScan(output.Stderr)
 			if pluginEntities == nil {
 				//some fatal error occurred - it was already reported, so just exit
 				return 255
@@ -119,11 +121,11 @@ func Main() (exitCode int) {
 
 		//if there are selectors, check which entities have been selected by them
 		if len(selectors) > 0 {
-			selectedEntities := make([]*impl.Entity, 0, len(entities))
+			selectedEntities := make([]holo.Entity, 0, len(entities))
 			for _, entity := range entities {
 				isEntitySelected := false
 				for _, selector := range selectors {
-					if entity.MatchesSelector(selector.String) {
+					if entity.(*externalplugin.Entity).MatchesSelector(selector.String) {
 						isEntitySelected = true
 						selector.Used = true
 						//NOTE: don't break from the selectors loop; we want to
@@ -172,7 +174,7 @@ func commandHelp(w io.Writer) {
 	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
 }
 
-func commandApply(entities []*impl.Entity, options map[int]bool) (exitCode int) {
+func commandApply(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	//ensure that we're the only Holo instance
 	if !impl.AcquireLockfile() {
 		return 255
@@ -181,7 +183,7 @@ func commandApply(entities []*impl.Entity, options map[int]bool) (exitCode int) 
 
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		entity.Apply(withForce)
+		entity.(*externalplugin.Entity).Apply(withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -191,26 +193,26 @@ func commandApply(entities []*impl.Entity, options map[int]bool) (exitCode int) 
 	return 0
 }
 
-func commandScan(entities []*impl.Entity, options map[int]bool) (exitCode int) {
+func commandScan(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	isPorcelain := options[optionScanPorcelain]
 	isShort := options[optionScanShort]
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			entity.PrintScanReport()
+			entity.(*externalplugin.Entity).PrintScanReport()
 		case isShort:
 			fmt.Println(entity.EntityID())
 		default:
-			entity.PrintReport(false)
+			entity.(*externalplugin.Entity).PrintReport(false)
 		}
 	}
 
 	return 0
 }
 
-func commandDiff(entities []*impl.Entity, options map[int]bool) (exitCode int) {
+func commandDiff(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
-		buf, err := entity.RenderDiff()
+		buf, err := entity.(*externalplugin.Entity).RenderDiff()
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}

@@ -28,7 +28,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/holocm/holo/cmd/holo/internal/externalplugin"
 	"github.com/holocm/holo/cmd/holo/internal/output"
+	"github.com/holocm/holo/lib/holo"
 )
 
 var rootDirectory string
@@ -48,7 +50,7 @@ func RootDirectory() string {
 
 //Configuration contains the parsed contents of /etc/holorc.
 type Configuration struct {
-	Plugins []*Plugin
+	Plugins []holo.Plugin
 }
 
 //List config snippets in /etc/holorc.d.
@@ -119,20 +121,20 @@ func ReadConfiguration() *Configuration {
 			pluginID := strings.TrimSpace(strings.TrimPrefix(line, "plugin"))
 
 			var (
-				plugin *Plugin
+				plugin holo.Plugin
 				err    error
 			)
 			if strings.Contains(pluginID, "=") {
 				fields := strings.SplitN(pluginID, "=", 2)
-				plugin, err = NewPluginWithExecutablePath(fields[0], fields[1])
+				plugin, err = externalplugin.NewPluginWithExecutablePath(fields[0], fields[1], NewRuntime(fields[0]))
 			} else {
-				plugin, err = NewPlugin(pluginID)
+				plugin, err = NewPlugin(pluginID, NewRuntime(pluginID))
 			}
 
 			if err == nil {
 				result.Plugins = append(result.Plugins, plugin)
 			} else {
-				if err == ErrPluginExecutableMissing {
+				if err == externalplugin.ErrPluginExecutableMissing {
 					//this is not an error because we need a way to uninstall
 					//plugins: when the plugin's files are removed, the next
 					//"holo apply file:/etc/holorc" will remove them from the
@@ -154,7 +156,7 @@ func ReadConfiguration() *Configuration {
 	//check existence of resource directories
 	hasError := false
 	for _, plugin := range result.Plugins {
-		dir := plugin.ResourceDirectory()
+		dir := plugin.(*externalplugin.Plugin).Runtime.ResourceDirPath
 		fi, err := os.Stat(dir)
 		switch {
 		case err != nil:
@@ -171,7 +173,7 @@ func ReadConfiguration() *Configuration {
 
 	//ensure existence of cache and state directories
 	for _, plugin := range result.Plugins {
-		dirs := []string{plugin.CacheDirectory(), plugin.StateDirectory()}
+		dirs := []string{plugin.(*externalplugin.Plugin).Runtime.CacheDirPath, plugin.(*externalplugin.Plugin).Runtime.StateDirPath}
 		for _, dir := range dirs {
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {

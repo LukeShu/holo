@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package impl
+package externalplugin
 
 import (
 	"bytes"
@@ -26,17 +26,11 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"strings"
 	"syscall"
 
 	"github.com/holocm/holo/cmd/holo/internal/output"
+	"github.com/holocm/holo/lib/holo"
 )
-
-//InfoLine represents a line in the information section of an Entity.
-type InfoLine struct {
-	attribute string
-	value     string
-}
 
 //Entity represents an entity known to some Holo plugin.
 type Entity struct {
@@ -45,11 +39,21 @@ type Entity struct {
 	actionVerb   string
 	actionReason string
 	sourceFiles  []string
-	infoLines    []InfoLine
+	infoLines    []holo.KV
 }
+
+var _ holo.Entity = &Entity{}
 
 //EntityID returns a string that uniquely identifies the entity.
 func (e *Entity) EntityID() string { return e.id }
+
+func (e *Entity) EntitySource() []string { return e.sourceFiles }
+
+func (e *Entity) EntityUserInfo() []holo.KV { return e.infoLines }
+
+func (e *Entity) EntityAction() (string, string) {
+	return e.actionVerb, e.actionReason
+}
 
 //MatchesSelector checks whether the given string is either the entity ID or a
 //source file of this entity.
@@ -75,7 +79,7 @@ func (e *Entity) PrintReport(withAction bool) {
 	var lineFormat string
 	if e.actionVerb == "" || !withAction {
 		lineFormat = "%12s %s\n"
-		fmt.Fprintf(output.Stdout, "\x1b[1m%s\x1b[0m", e.id)
+		fmt.Fprintf(output.Stdout, "\x1b[1m%s\x1b[0m", e.EntityID())
 	} else {
 		lineFormat = fmt.Sprintf("%%%ds %%s\n", len(e.actionVerb))
 		fmt.Fprintf(output.Stdout, "%s \x1b[1m%s\x1b[0m", e.actionVerb, e.id)
@@ -87,8 +91,8 @@ func (e *Entity) PrintReport(withAction bool) {
 	}
 
 	//print info lines
-	for _, line := range e.infoLines {
-		fmt.Fprintf(output.Stdout, lineFormat, line.attribute, line.value)
+	for _, line := range e.EntityUserInfo() {
+		fmt.Fprintf(output.Stdout, lineFormat, line.Key, line.Val)
 	}
 	output.Stdout.EndParagraph()
 	os.Stdout.Sync()
@@ -97,18 +101,18 @@ func (e *Entity) PrintReport(withAction bool) {
 //PrintScanReport reproduces the original scan report for this Entity.
 func (e *Entity) PrintScanReport() {
 	fmt.Fprintf(output.Stdout, "ENTITY: %s\n", e.EntityID())
-	switch {
-	case e.actionReason != "":
-		fmt.Fprintf(output.Stdout, "ACTION: %s (%s)\n", e.actionVerb, e.actionReason)
-	case e.actionVerb != "Working on":
-		fmt.Fprintf(output.Stdout, "ACTION: %s\n", e.actionVerb)
+	verb, reason := e.EntityAction()
+	if reason == "" {
+		fmt.Fprintf(output.Stdout, "ACTION: %s\n", verb)
+	} else {
+		fmt.Fprintf(output.Stdout, "ACTION: %s (%s)\n", verb, reason)
 	}
 
-	for _, sourceFile := range e.sourceFiles {
+	for _, sourceFile := range e.EntitySource() {
 		fmt.Fprintf(output.Stdout, "SOURCE: %s\n", sourceFile)
 	}
-	for _, infoLine := range e.infoLines {
-		fmt.Fprintf(output.Stdout, "%s: %s\n", infoLine.attribute, infoLine.value)
+	for _, infoLine := range e.EntityUserInfo() {
+		fmt.Fprintf(output.Stdout, "%s: %s\n", infoLine.Key, infoLine.Val)
 	}
 
 	output.Stdout.EndParagraph()
@@ -116,41 +120,34 @@ func (e *Entity) PrintScanReport() {
 
 //Apply performs the complete application algorithm for the given Entity.
 func (e *Entity) Apply(withForce bool) {
-	command := "apply"
-	if withForce {
-		command = "force-apply"
-	}
-
-	//track whether the report was already printed
+	// track whether the report was already printed
 	tracker := &output.PrologueTracker{Printer: func() { e.PrintReport(true) }}
 	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}
 	stderr := &output.PrologueWriter{Tracker: tracker, Writer: output.Stderr}
 
-	//execute apply operation
-	cmdText, err := e.plugin.RunCommandWithFD3([]string{command, e.id}, stdout, stderr)
-	if err != nil {
-		output.Errorf(stderr, err.Error())
+	result := e.plugin.HoloApply(e.id, withForce, stdout, stderr)
+
+	var showReport bool
+	var showDiff bool
+	switch result {
+	case holo.ApplyApplied:
+		showReport = true
+		showDiff = false
+	case holo.ApplyAlreadyApplied:
+		showReport = false
+		showDiff = false
+	case holo.ApplyExternallyChanged:
+		output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
+		showReport = false
+		showDiff = true
+	case holo.ApplyExternallyDeleted:
+		output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
+		showReport = true
+		showDiff = false
+	default: // assume holo.ApplyErr
 		return
 	}
 
-	//only print report if there was output, or if the plugin provisioned the
-	//entity (as signaled by the absence of the "not changed\n" command")
-	showReport := true
-	showDiff := false
-	if err == nil {
-		cmdLines := strings.Split(cmdText, "\n")
-		for _, line := range cmdLines {
-			switch line {
-			case "not changed":
-				showReport = false
-			case "requires --force to overwrite":
-				output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
-				showDiff = true
-			case "requires --force to restore":
-				output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
-			}
-		}
-	}
 	if showReport {
 		tracker.Exec()
 	}
@@ -160,7 +157,7 @@ func (e *Entity) Apply(withForce bool) {
 			output.Errorf(stderr, err.Error())
 			return
 		}
-		//indent diff
+		// indent diff
 		indent := []byte("    ")
 		diff = regexp.MustCompile("(?m:^)").ReplaceAll(diff, indent)
 		diff = bytes.TrimSuffix(diff, indent)
@@ -176,19 +173,11 @@ func (e *Entity) Apply(withForce bool) {
 //handles symlinks and missing files gracefully. The output is always a patch
 //that can be applied to last provisioned version into the current version.
 func (e *Entity) RenderDiff() ([]byte, error) {
-	cmdText, err := e.plugin.RunCommandWithFD3([]string{"diff", e.id}, output.Stdout, output.Stderr)
-	if err != nil {
-		return nil, err
-	}
-
-	//were paths given for diffing? if not, that's okay, not every plugin knows
-	//how to diff
-	cmdLines := strings.Split(cmdText, "\000")
-	if len(cmdLines) < 2 {
+	new, cur := e.plugin.HoloDiff(e.EntityID(), output.Stderr)
+	if new == "" && cur == "" {
 		return nil, nil
 	}
-
-	return renderFileDiff(cmdLines[0], cmdLines[1])
+	return renderFileDiff(new, cur)
 }
 
 func renderFileDiff(fromPath, toPath string) ([]byte, error) {
