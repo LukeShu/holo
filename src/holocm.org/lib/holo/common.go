@@ -1,5 +1,9 @@
 package holo
 
+import (
+	"io"
+)
+
 type Runtime struct {
 	APIVersion int
 
@@ -64,7 +68,7 @@ type Plugin interface {
 	HoloScan() ([]Entity, error)
 
 	// Provision entityID
-	HoloApply(entityID string, force bool) ApplyResult
+	HoloApply(entityID string, force bool, stdout, stderr io.Writer) ApplyResult
 
 	// Return two file paths.  The file pointed to by the first is
 	// a representation of entity in the desired provisioned

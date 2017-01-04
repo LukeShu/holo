@@ -23,6 +23,7 @@ package files
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"holocm.org/lib/holo"
@@ -51,8 +52,8 @@ func (p FilesPlugin) HoloScan() ([]holo.Entity, error) {
 	return b, nil
 }
 
-func (p FilesPlugin) HoloApply(entityID string, force bool) holo.ApplyResult {
-	return p.getEntity(entityID).Apply(force)
+func (p FilesPlugin) HoloApply(entityID string, force bool, stdout, stderr io.Writer) holo.ApplyResult {
+	return p.getEntity(entityID).Apply(force, stdout, stderr)
 }
 
 func (p FilesPlugin) HoloDiff(entityID string) (string, string) {

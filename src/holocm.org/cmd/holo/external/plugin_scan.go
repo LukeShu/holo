@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package main
+package external
 
 import (
 	"bytes"
@@ -26,26 +26,30 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"holocm.org/lib/holo"
 )
 
 //Scan discovers entities available for the given entity. Errors are reported
 //immediately and will result in nil being returned. "No entities found" will
 //be reported as a non-nil empty slice.
 //there are no entities.
-func (p *Plugin) Scan() []*Entity {
-	//invoke scan operation
-	stdout, hadError := p.runScanOperation()
-	if hadError {
-		return nil
+func (p *Plugin) HoloScan() ([]holo.Entity, error) {
+	var stdoutBuffer bytes.Buffer
+	err := p.Command([]string{"scan"}, &stdoutBuffer, Stderr, nil).Run()
+	if err != nil {
+		Errorf(Stderr, "scan with plugin %s failed: %s", p.ID(), err.Error())
+		return nil, err
 	}
+	stdout := stdoutBuffer.String()
 
 	//parse scan output
 	lines := strings.Split(strings.TrimSpace(stdout), "\n")
 	lineRx := regexp.MustCompile(`^\s*([^:]+): (.+)\s*$`)
 	actionRx := regexp.MustCompile(`^([^()]+) \((.+)\)$`)
-	hadError = false
+	hadError := false
 	var currentEntity *Entity
-	var result []*Entity
+	var result []holo.Entity
 	for idx, line := range lines {
 		//skip empty lines
 		if line == "" {
@@ -91,7 +95,7 @@ func (p *Plugin) Scan() []*Entity {
 		default:
 			//store unrecognized keys as info lines
 			currentEntity.infoLines = append(currentEntity.infoLines,
-				InfoLine{key, value},
+				holo.KV{key, value},
 			)
 		}
 	}
@@ -103,30 +107,19 @@ func (p *Plugin) Scan() []*Entity {
 
 	//report errors
 	if hadError {
-		return nil
+		return nil, fmt.Errorf("idk")
 	}
 
 	//on success, ensure non-nil return value
 	if result == nil {
-		result = []*Entity{}
+		result = []holo.Entity{}
 	}
 
 	sort.Sort(entitiesByID(result))
-	return result
+	return result, nil
 }
 
-func (p *Plugin) runScanOperation() (stdout string, hadError bool) {
-	var stdoutBuffer bytes.Buffer
-	err := p.Command([]string{"scan"}, &stdoutBuffer, Stderr, nil).Run()
-
-	if err != nil {
-		Errorf(Stderr, "scan with plugin %s failed: %s", p.ID(), err.Error())
-	}
-
-	return string(stdoutBuffer.Bytes()), err != nil
-}
-
-type entitiesByID []*Entity
+type entitiesByID []holo.Entity
 
 func (e entitiesByID) Len() int           { return len(e) }
 func (e entitiesByID) Less(i, j int) bool { return e[i].EntityID() < e[j].EntityID() }

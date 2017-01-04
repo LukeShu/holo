@@ -25,6 +25,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"holocm.org/cmd/holo/external"
 )
 
 var (
@@ -45,13 +47,13 @@ func AcquireLockfile() {
 	var err error
 	lockFile, err = os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
-		Errorf(Stderr, "Cannot create lock file %s: %s", lockPath, err.Error())
+		external.Errorf(external.Stderr, "Cannot create lock file %s: %s", lockPath, err.Error())
 		//is this the "file exists" error that indicates another running instance?
 		suberr := err.(*os.PathError).Err
 		if errno, ok := suberr.(syscall.Errno); ok {
 			if errno == syscall.EEXIST {
-				fmt.Fprintln(Stderr, "This usually means that another instance of Holo is currently running.")
-				fmt.Fprintln(Stderr, "If not, you can try to delete the lock file manually.")
+				fmt.Fprintln(external.Stderr, "This usually means that another instance of Holo is currently running.")
+				fmt.Fprintln(external.Stderr, "If not, you can try to delete the lock file manually.")
 			}
 		}
 		os.Exit(255)
@@ -64,10 +66,10 @@ func AcquireLockfile() {
 func ReleaseLockfile() {
 	err := lockFile.Close()
 	if err != nil {
-		Errorf(Stderr, err.Error())
+		external.Errorf(external.Stderr, err.Error())
 	}
 	err = os.Remove(lockPath)
 	if err != nil {
-		Errorf(Stderr, err.Error())
+		external.Errorf(external.Stderr, err.Error())
 	}
 }

@@ -23,6 +23,9 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"holocm.org/cmd/holo/external"
+	"holocm.org/lib/holo"
 )
 
 const (
@@ -47,7 +50,7 @@ func main() {
 	}
 
 	//check that it is a known command word
-	var command func([]*Entity, map[int]bool)
+	var command func([]holo.Entity, map[int]bool)
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
@@ -93,25 +96,25 @@ func main() {
 	}
 
 	//ask all plugins to scan for entities
-	var entities []*Entity
+	var entities []holo.Entity
 	for _, plugin := range config.Plugins {
-		pluginEntities := plugin.Scan()
+		pluginEntities, _ := plugin.HoloScan()
 		if pluginEntities == nil {
 			//some fatal error occurred - it was already reported, so just exit
 			CleanupRuntimeCache()
 			os.Exit(255)
 		}
 		entities = append(entities, pluginEntities...)
-		Stdout.EndParagraph()
+		external.Stdout.EndParagraph()
 	}
 
 	//if there are selectors, check which entities have been selected by them
 	if len(selectors) > 0 {
-		selectedEntities := make([]*Entity, 0, len(entities))
+		selectedEntities := make([]holo.Entity, 0, len(entities))
 		for _, entity := range entities {
 			isEntitySelected := false
 			for _, selector := range selectors {
-				if entity.MatchesSelector(selector.String) {
+				if entity.(*external.Entity).MatchesSelector(selector.String) {
 					isEntitySelected = true
 					selector.Used = true
 					//NOTE: don't break from the selectors loop; we want to
@@ -160,44 +163,44 @@ func commandHelp() {
 	fmt.Printf("\nSee `man 8 holo` for details.\n")
 }
 
-func commandApply(entities []*Entity, options map[int]bool) {
+func commandApply(entities []holo.Entity, options map[int]bool) {
 	AcquireLockfile()
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		entity.Apply(withForce)
+		entity.(*external.Entity).Apply(withForce)
 
 		os.Stderr.Sync()
-		Stdout.EndParagraph()
+		external.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
 	ReleaseLockfile()
 }
 
-func commandScan(entities []*Entity, options map[int]bool) {
+func commandScan(entities []holo.Entity, options map[int]bool) {
 	isPorcelain := options[optionScanPorcelain]
 	isShort := options[optionScanShort]
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			entity.PrintScanReport()
+			entity.(*external.Entity).PrintScanReport()
 		case isShort:
 			fmt.Println(entity.EntityID())
 		default:
-			entity.PrintReport(false)
+			entity.(*external.Entity).PrintReport(false)
 		}
 	}
 }
 
-func commandDiff(entities []*Entity, options map[int]bool) {
+func commandDiff(entities []holo.Entity, options map[int]bool) {
 	for _, entity := range entities {
-		output, err := entity.RenderDiff()
+		output, err := entity.(*external.Entity).RenderDiff()
 		if err != nil {
-			Errorf(Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
+			external.Errorf(external.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}
 		os.Stdout.Write(output)
 
 		os.Stderr.Sync()
-		Stdout.EndParagraph()
+		external.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
 }

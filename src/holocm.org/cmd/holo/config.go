@@ -27,6 +27,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"holocm.org/cmd/holo/external"
+	"holocm.org/lib/holo"
 )
 
 var rootDirectory string
@@ -46,7 +49,7 @@ func RootDirectory() string {
 
 //Configuration contains the parsed contents of /etc/holorc.
 type Configuration struct {
-	Plugins []*Plugin
+	Plugins []holo.Plugin
 }
 
 //List config snippets in /etc/holorc.d.
@@ -100,7 +103,7 @@ func readConfigLines() ([]string, error) {
 func ReadConfiguration() *Configuration {
 	lines, err := readConfigLines()
 	if err != nil {
-		Errorf(Stderr, err.Error())
+		external.Errorf(external.Stderr, err.Error())
 		return nil
 	}
 
@@ -117,34 +120,34 @@ func ReadConfiguration() *Configuration {
 			pluginID := strings.TrimSpace(strings.TrimPrefix(line, "plugin"))
 
 			var (
-				plugin *Plugin
+				plugin holo.Plugin
 				err    error
 			)
 			if strings.Contains(pluginID, "=") {
 				fields := strings.SplitN(pluginID, "=", 2)
-				plugin, err = NewPluginWithExecutablePath(fields[0], fields[1])
+				plugin, err = external.NewPluginWithExecutablePath(fields[0], fields[1], NewRuntime(fields[0]))
 			} else {
-				plugin, err = NewPlugin(pluginID)
+				plugin, err = NewPlugin(pluginID, NewRuntime(pluginID))
 			}
 
 			if err == nil {
 				result.Plugins = append(result.Plugins, plugin)
 			} else {
-				if err == ErrPluginExecutableMissing {
+				if err == external.ErrPluginExecutableMissing {
 					//this is not an error because we need a way to uninstall
 					//plugins: when the plugin's files are removed, the next
 					//"holo apply file:/etc/holorc" will remove them from the
 					//holorc, but to be able to run, Holo needs to be able to
 					//ignore the missing uninstalled plugin at this point
-					Warnf(Stderr, "Skipping plugin: %s", pluginID)
+					external.Warnf(external.Stderr, "Skipping plugin: %s", pluginID)
 				} else {
-					Errorf(Stderr, err.Error())
+					external.Errorf(external.Stderr, err.Error())
 					return nil
 				}
 			}
 		} else {
 			//unknown line
-			Errorf(Stderr, "cannot parse configuration: unknown command: %s", line)
+			external.Errorf(external.Stderr, "cannot parse configuration: unknown command: %s", line)
 			return nil
 		}
 	}
@@ -152,14 +155,14 @@ func ReadConfiguration() *Configuration {
 	//check existence of resource directories
 	hasError := false
 	for _, plugin := range result.Plugins {
-		dir := plugin.ResourceDirectory()
+		dir := plugin.(*external.Plugin).Runtime.ResourceDirPath
 		fi, err := os.Stat(dir)
 		switch {
 		case err != nil:
-			Errorf(Stderr, "cannot open %s: %s", dir, err.Error())
+			external.Errorf(external.Stderr, "cannot open %s: %s", dir, err.Error())
 			hasError = true
 		case !fi.IsDir():
-			Errorf(Stderr, "cannot open %s: not a directory!", dir)
+			external.Errorf(external.Stderr, "cannot open %s: not a directory!", dir)
 			hasError = true
 		}
 	}
@@ -169,11 +172,11 @@ func ReadConfiguration() *Configuration {
 
 	//ensure existence of cache and state directories
 	for _, plugin := range result.Plugins {
-		dirs := []string{plugin.CacheDirectory(), plugin.StateDirectory()}
+		dirs := []string{plugin.(*external.Plugin).Runtime.CacheDirPath, plugin.(*external.Plugin).Runtime.StateDirPath}
 		for _, dir := range dirs {
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
-				Errorf(Stderr, err.Error())
+				external.Errorf(external.Stderr, err.Error())
 				hasError = true
 			}
 		}
