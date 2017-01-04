@@ -128,7 +128,7 @@ func (entity *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.
 			for _, err := range errs {
 				fmt.Fprintf(stderr, "!! %s\n", err.Error())
 			}
-			//return holo.ApplyErr(1)
+			//return holo.NewApplyError(errs[0])
 			return holo.ApplyApplied
 		}
 		return holo.ApplyApplied
@@ -137,7 +137,7 @@ func (entity *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.
 
 		if err != nil {
 			fmt.Fprintf(stderr, "!! %s\n", err.Error())
-			//return holo.ApplyErr(1)
+			//return holo.NewApplyError(err)
 			return holo.ApplyApplied
 		}
 
