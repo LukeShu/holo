@@ -25,6 +25,7 @@ import (
 	"os"
 
 	"holocm.org/cmd/holo/external"
+	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
@@ -105,7 +106,7 @@ func main() {
 			os.Exit(255)
 		}
 		entities = append(entities, pluginEntities...)
-		external.Stdout.EndParagraph()
+		output.Stdout.EndParagraph()
 	}
 
 	//if there are selectors, check which entities have been selected by them
@@ -170,7 +171,7 @@ func commandApply(entities []holo.Entity, options map[int]bool) {
 		entity.(*external.Entity).Apply(withForce)
 
 		os.Stderr.Sync()
-		external.Stdout.EndParagraph()
+		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
 	ReleaseLockfile()
@@ -193,14 +194,14 @@ func commandScan(entities []holo.Entity, options map[int]bool) {
 
 func commandDiff(entities []holo.Entity, options map[int]bool) {
 	for _, entity := range entities {
-		output, err := entity.(*external.Entity).RenderDiff()
+		dat, err := entity.(*external.Entity).RenderDiff()
 		if err != nil {
-			external.Errorf(external.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
+			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}
-		os.Stdout.Write(output)
+		os.Stdout.Write(dat)
 
 		os.Stderr.Sync()
-		external.Stdout.EndParagraph()
+		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
 }

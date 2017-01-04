@@ -27,10 +27,10 @@ import (
 	"strings"
 )
 
-// ScanRepo returns a slice of all the TargetFile entities.
-func (p FilesPlugin) ScanRepo() []*TargetFile {
+// ScanRepo returns a slice of all the FilesEntity entities.
+func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	//walk over the repo to find repo files (and thus the corresponding target files)
-	targets := make(map[string]*TargetFile)
+	targets := make(map[string]*FilesEntity)
 	repoDir := p.resourceDirectory()
 	filepath.Walk(repoDir, func(repoPath string, repoFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
@@ -52,11 +52,11 @@ func (p FilesPlugin) ScanRepo() []*TargetFile {
 			return nil
 		}
 
-		//create new TargetFile if necessary and store the repo entry in it
+		//create new FilesEntity if necessary and store the repo entry in it
 		repoEntry := p.NewRepoFile(repoPath)
 		targetPath := repoEntry.TargetPath()
 		if targets[targetPath] == nil {
-			targets[targetPath] = p.NewTargetFileFromPathIn(p.targetDirectory(), targetPath)
+			targets[targetPath] = p.NewFilesEntityFromPathIn(p.targetDirectory(), targetPath)
 		}
 		targets[targetPath].AddRepoEntry(repoEntry)
 		return nil
@@ -81,7 +81,7 @@ func (p FilesPlugin) ScanRepo() []*TargetFile {
 		//check if we have seen the config file for this target base
 		//(if not, it's orphaned)
 		//TODO: s/(targetBase)Path/\1Dir/g and s/(targetBase)File/Path/g
-		target := p.NewTargetFileFromPathIn(targetBaseDir, targetBasePath)
+		target := p.NewFilesEntityFromPathIn(targetBaseDir, targetBasePath)
 		targetPath := target.PathIn(p.targetDirectory())
 		if targets[targetPath] == nil {
 			target.orphaned = true
@@ -91,7 +91,7 @@ func (p FilesPlugin) ScanRepo() []*TargetFile {
 	})
 
 	//flatten result into list
-	result := make([]*TargetFile, 0, len(targets))
+	result := make([]*FilesEntity, 0, len(targets))
 	for _, target := range targets {
 		result = append(result, target)
 	}
@@ -100,7 +100,7 @@ func (p FilesPlugin) ScanRepo() []*TargetFile {
 	return result
 }
 
-type filesByPath []*TargetFile
+type filesByPath []*FilesEntity
 
 func (f filesByPath) Len() int           { return len(f) }
 func (f filesByPath) Less(i, j int) bool { return f[i].relTargetPath < f[j].relTargetPath }

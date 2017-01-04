@@ -29,6 +29,7 @@ import (
 	"strings"
 
 	"holocm.org/cmd/holo/external"
+	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
@@ -103,7 +104,7 @@ func readConfigLines() ([]string, error) {
 func ReadConfiguration() *Configuration {
 	lines, err := readConfigLines()
 	if err != nil {
-		external.Errorf(external.Stderr, err.Error())
+		output.Errorf(output.Stderr, err.Error())
 		return nil
 	}
 
@@ -139,15 +140,15 @@ func ReadConfiguration() *Configuration {
 					//"holo apply file:/etc/holorc" will remove them from the
 					//holorc, but to be able to run, Holo needs to be able to
 					//ignore the missing uninstalled plugin at this point
-					external.Warnf(external.Stderr, "Skipping plugin: %s", pluginID)
+					output.Warnf(output.Stderr, "Skipping plugin: %s", pluginID)
 				} else {
-					external.Errorf(external.Stderr, err.Error())
+					output.Errorf(output.Stderr, err.Error())
 					return nil
 				}
 			}
 		} else {
 			//unknown line
-			external.Errorf(external.Stderr, "cannot parse configuration: unknown command: %s", line)
+			output.Errorf(output.Stderr, "cannot parse configuration: unknown command: %s", line)
 			return nil
 		}
 	}
@@ -159,10 +160,10 @@ func ReadConfiguration() *Configuration {
 		fi, err := os.Stat(dir)
 		switch {
 		case err != nil:
-			external.Errorf(external.Stderr, "cannot open %s: %s", dir, err.Error())
+			output.Errorf(output.Stderr, "cannot open %s: %s", dir, err.Error())
 			hasError = true
 		case !fi.IsDir():
-			external.Errorf(external.Stderr, "cannot open %s: not a directory!", dir)
+			output.Errorf(output.Stderr, "cannot open %s: not a directory!", dir)
 			hasError = true
 		}
 	}
@@ -176,7 +177,7 @@ func ReadConfiguration() *Configuration {
 		for _, dir := range dirs {
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
-				external.Errorf(external.Stderr, err.Error())
+				output.Errorf(output.Stderr, err.Error())
 				hasError = true
 			}
 		}

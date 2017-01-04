@@ -29,7 +29,7 @@ import (
 // target base and assesses the situation. This logic is grouped in
 // one function because it's used by both `holo scan` and `holo
 // apply`.
-func (target *TargetFile) scanOrphanedTargetBase() (theTargetPath, strategy, assessment string) {
+func (target *FilesEntity) scanOrphanedTargetBase() (theTargetPath, strategy, assessment string) {
 	targetPath := target.PathIn(target.plugin.targetDirectory())
 	if IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
@@ -38,7 +38,7 @@ func (target *TargetFile) scanOrphanedTargetBase() (theTargetPath, strategy, ass
 }
 
 // handleOrphanedTargetBase cleans up an orphaned target base.
-func (target *TargetFile) handleOrphanedTargetBase() []error {
+func (target *FilesEntity) handleOrphanedTargetBase() []error {
 	targetPath, strategy, _ := target.scanOrphanedTargetBase()
 	targetBasePath := target.PathIn(target.plugin.targetBaseDirectory())
 

@@ -29,24 +29,25 @@ import (
 	"holocm.org/lib/holo"
 )
 
-// TargetFile represents a configuration file that can be provisioned
-// by Holo.
-type TargetFile struct {
+// FilesEntity implements holo.Entity.
+//
+// It represents a configuration file that can be provisioned by Holo.
+type FilesEntity struct {
 	relTargetPath string //the target path relative to the plugin.targetDirectory()
 	orphaned      bool   //default: false
 	repoEntries   RepoFiles
 	plugin        FilesPlugin
 }
 
-// NewTargetFileFromPathIn creates a TargetFile instance for which a
+// NewFilesEntityFromPathIn creates a FilesEntity instance for which a
 // path relative to a known location is known.
 //
-//    target := p.NewTargetFileFromPathIn(p.targetDirectory(), targetPath)
-//    target := p.NewTargetFileFromPathIn(p.provisionedDirectory(), provisionedPath)
-func (p FilesPlugin) NewTargetFileFromPathIn(directory, path string) *TargetFile {
+//    target := p.NewFilesEntityFromPathIn(p.targetDirectory(), targetPath)
+//    target := p.NewFilesEntityFromPathIn(p.provisionedDirectory(), provisionedPath)
+func (p FilesPlugin) NewFilesEntityFromPathIn(directory, path string) *FilesEntity {
 	//make path relative
 	relTargetPath, _ := filepath.Rel(directory, path)
-	return &TargetFile{relTargetPath: relTargetPath, plugin: p}
+	return &FilesEntity{relTargetPath: relTargetPath, plugin: p}
 }
 
 // PathIn returns the path to this target file relative to the given
@@ -55,29 +56,29 @@ func (p FilesPlugin) NewTargetFileFromPathIn(directory, path string) *TargetFile
 //    targetPath := target.pathIn(target.plugin.targetDirectory())           // e.g. "/etc/foo.conf"
 //    targetBasePath := target.pathIn(target.plugin.targetBaseDirectory())   // e.g. "/var/lib/holo/files/base/etc/foo.conf"
 //    provisionedPath := target.pathIn(target.plugin.provisionedDirectory()) // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
-func (target *TargetFile) PathIn(directory string) string {
+func (target *FilesEntity) PathIn(directory string) string {
 	return filepath.Join(directory, target.relTargetPath)
 }
 
-// AddRepoEntry registers a new repository entry in this TargetFile
+// AddRepoEntry registers a new repository entry in this FilesEntity
 // instance.
-func (target *TargetFile) AddRepoEntry(entry RepoFile) {
+func (target *FilesEntity) AddRepoEntry(entry RepoFile) {
 	target.repoEntries = append(target.repoEntries, entry)
 }
 
 // RepoEntries returns an ordered list of all repository entries for
-// this TargetFile.
-func (target *TargetFile) RepoEntries() []RepoFile {
+// this FilesEntity.
+func (target *FilesEntity) RepoEntries() []RepoFile {
 	sort.Sort(target.repoEntries)
 	return target.repoEntries
 }
 
 // EntityID returns the entity ID for this target file.
-func (target *TargetFile) EntityID() string {
+func (target *FilesEntity) EntityID() string {
 	return "file:" + target.PathIn(target.plugin.targetDirectory())
 }
 
-func (target *TargetFile) EntityAction() string {
+func (target *FilesEntity) EntityAction() string {
 	if target.orphaned {
 		_, _, assessment := target.scanOrphanedTargetBase()
 		return fmt.Sprintf("Scrubbing (%s)\n", assessment)
@@ -85,7 +86,7 @@ func (target *TargetFile) EntityAction() string {
 	return ""
 }
 
-func (target *TargetFile) EntitySource() []string {
+func (target *FilesEntity) EntitySource() []string {
 	if target.orphaned {
 		return nil
 	}
@@ -96,7 +97,7 @@ func (target *TargetFile) EntitySource() []string {
 	return ret
 }
 
-func (target *TargetFile) EntityUserInfo() (r []holo.KV) {
+func (target *FilesEntity) EntityUserInfo() (r []holo.KV) {
 	if target.orphaned {
 		_, strategy, _ := target.scanOrphanedTargetBase()
 		r = append(r, holo.KV{strategy, target.PathIn(target.plugin.targetBaseDirectory())})
@@ -109,7 +110,7 @@ func (target *TargetFile) EntityUserInfo() (r []holo.KV) {
 	return r
 }
 
-func (target *TargetFile) Apply(withForce bool, stdout, stderr io.Writer) holo.ApplyResult {
+func (target *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.ApplyResult {
 	// BUG(lukeshu): FilesEntity.Apply: We hide errors here to
 	// match the upstream behavior of holo-files:
 	// https://github.com/holocm/holo/issues/19

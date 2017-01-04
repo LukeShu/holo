@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 
+	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
@@ -36,9 +37,9 @@ import (
 //there are no entities.
 func (p *Plugin) HoloScan() ([]holo.Entity, error) {
 	var stdoutBuffer bytes.Buffer
-	err := p.Command([]string{"scan"}, &stdoutBuffer, Stderr, nil).Run()
+	err := p.Command([]string{"scan"}, &stdoutBuffer, output.Stderr, nil).Run()
 	if err != nil {
-		Errorf(Stderr, "scan with plugin %s failed: %s", p.ID(), err.Error())
+		output.Errorf(output.Stderr, "scan with plugin %s failed: %s", p.ID(), err.Error())
 		return nil, err
 	}
 	stdout := stdoutBuffer.String()
@@ -62,7 +63,7 @@ func (p *Plugin) HoloScan() ([]holo.Entity, error) {
 		//general line format is "key: value"
 		match := lineRx.FindStringSubmatch(line)
 		if match == nil {
-			Errorf(Stderr, "%s: parse error (line was \"%s\")", errorIntro, line)
+			output.Errorf(output.Stderr, "%s: parse error (line was \"%s\")", errorIntro, line)
 			hadError = true
 			continue
 		}
@@ -78,7 +79,7 @@ func (p *Plugin) HoloScan() ([]holo.Entity, error) {
 		case currentEntity == nil:
 			//if not, we need to be inside an entity
 			//(i.e. line with idx = 0 must start an entity)
-			Errorf(Stderr, "%s: expected entity ID, found attribute \"%s\"", errorIntro, line)
+			output.Errorf(output.Stderr, "%s: expected entity ID, found attribute \"%s\"", errorIntro, line)
 			hadError = true
 		case key == "SOURCE":
 			currentEntity.sourceFiles = append(currentEntity.sourceFiles, value)

@@ -25,7 +25,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"holocm.org/cmd/holo/external"
+	"holocm.org/cmd/holo/output"
 )
 
 var cachePath string
@@ -45,7 +45,7 @@ func init() {
 
 	err := doInit()
 	if err != nil {
-		external.Errorf(external.Stderr, err.Error())
+		output.Errorf(output.Stderr, err.Error())
 		os.Exit(255)
 	}
 }

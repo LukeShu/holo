@@ -30,10 +30,10 @@ import (
 )
 
 // Apply performs the complete application algorithm for the given
-// TargetFile.  This includes taking a copy of the target base if
+// FilesEntity.  This includes taking a copy of the target base if
 // necessary, applying all repository entries, and saving the result
 // in the target path with the correct file metadata.
-func (target *TargetFile) apply(withForce bool) (holo.ApplyResult, error) {
+func (target *FilesEntity) apply(withForce bool) (holo.ApplyResult, error) {
 	// determine the related paths
 	targetPath := target.PathIn(target.plugin.targetDirectory())
 	targetBasePath := target.PathIn(target.plugin.targetBaseDirectory())

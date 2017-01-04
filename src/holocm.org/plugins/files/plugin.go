@@ -29,6 +29,7 @@ import (
 	"holocm.org/lib/holo"
 )
 
+// FilesPlugin implements holo.Plugin
 type FilesPlugin struct {
 	Runtime holo.Runtime
 }
@@ -63,14 +64,14 @@ func (p FilesPlugin) HoloDiff(entityID string) (string, string) {
 	return new, cur
 }
 
-func (p FilesPlugin) getEntity(entityID string) *TargetFile {
+func (p FilesPlugin) getEntity(entityID string) *FilesEntity {
 	entities := p.ScanRepo()
 	if entities == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
 		os.Exit(1)
 	}
-	var selectedEntity *TargetFile
+	var selectedEntity *FilesEntity
 	for _, entity := range entities {
 		if entity.EntityID() == entityID {
 			selectedEntity = entity

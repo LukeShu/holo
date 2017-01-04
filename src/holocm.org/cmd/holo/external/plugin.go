@@ -32,6 +32,7 @@ import (
 	"strconv"
 	"strings"
 
+	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
@@ -61,7 +62,7 @@ func NewPluginWithExecutablePath(id string, executablePath string, runtime holo.
 	_, err := os.Stat(executablePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			Errorf(Stderr, "%s: file not found", executablePath)
+			output.Errorf(output.Stderr, "%s: file not found", executablePath)
 			return nil, ErrPluginExecutableMissing
 		}
 		return nil, err
@@ -96,7 +97,7 @@ func (p *Plugin) HoloInfo() map[string]string {
 	if p.metadata == nil {
 		p.metadata = make(map[string]string)
 		var buf bytes.Buffer
-		err := p.Command([]string{"info"}, &buf, Stderr, nil).Run()
+		err := p.Command([]string{"info"}, &buf, output.Stderr, nil).Run()
 		if err != nil {
 			return nil
 		}
@@ -130,9 +131,9 @@ func (p *Plugin) Command(arguments []string, stdout io.Writer, stderr io.Writer,
 	cmd := exec.Command(p.executablePath, arguments...)
 	cmd.Stdin = nil
 	cmd.Stdout = stdout
-	cmd.Stderr = &LineColorizingWriter{Writer: stderr, Rules: []LineColorizingRule{
-		LineColorizingRule{[]byte("!! "), []byte("\x1B[1;31m")},
-		LineColorizingRule{[]byte(">> "), []byte("\x1B[1;33m")},
+	cmd.Stderr = &output.LineColorizingWriter{Writer: stderr, Rules: []output.LineColorizingRule{
+		{[]byte("!! "), []byte("\x1B[1;31m")},
+		{[]byte(">> "), []byte("\x1B[1;33m")},
 	}}
 	if msg != nil {
 		cmd.ExtraFiles = []*os.File{msg}
@@ -192,7 +193,7 @@ func (p *Plugin) HoloApply(entityID string, withForce bool, stdout, stderr io.Wr
 	// execute apply operation
 	cmdText, err := p.RunCommandWithFD3([]string{command, entityID}, stdout, stderr)
 	if err != nil {
-		Errorf(stderr, err.Error())
+		output.Errorf(stderr, err.Error())
 		return holo.ApplyErr(1)
 	}
 
@@ -214,7 +215,7 @@ func (p *Plugin) HoloApply(entityID string, withForce bool, stdout, stderr io.Wr
 }
 
 func (p *Plugin) HoloDiff(entityID string) (string, string) {
-	cmdText, err := p.RunCommandWithFD3([]string{"diff", entityID}, Stdout, Stderr)
+	cmdText, err := p.RunCommandWithFD3([]string{"diff", entityID}, output.Stdout, output.Stderr)
 	if err != nil {
 		return "", ""
 	}
