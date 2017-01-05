@@ -28,7 +28,10 @@ import (
 	"sort"
 	"strings"
 
+	"holocm.org/cmd/holo/external"
+	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
+	"holocm.org/lib/holo"
 )
 
 var rootDirectory string
@@ -46,9 +49,31 @@ func RootDirectory() string {
 	return rootDirectory
 }
 
+func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
+	if arg == nil {
+		_arg := filepath.Join(RootDirectory(), "usr/lib/holo/holo-"+id)
+		arg = &_arg
+	}
+	plugin, err := external.NewExternalPlugin(id, *arg, runtime)
+	if err != nil {
+		return nil, err
+	}
+	return plugin, nil
+}
+
+func NewRuntime(id string) holo.Runtime {
+	return holo.Runtime{
+		APIVersion:      3,
+		RootDirPath:     RootDirectory(),
+		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
+		CacheDirPath:    filepath.Join(CachePath(), id),
+		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
+	}
+}
+
 //Configuration contains the parsed contents of /etc/holorc.
 type Configuration struct {
-	Plugins []*PluginHandle
+	Plugins []*impl.PluginHandle
 }
 
 //List config snippets in /etc/holorc.d.
@@ -129,7 +154,7 @@ func ReadConfiguration() *Configuration {
 			} else {
 				pluginID = pluginSpec
 			}
-			plugin, err := GetPlugin(pluginID, pluginArg)
+			plugin, err := impl.NewPluginHandle(pluginID, pluginArg, NewRuntime(pluginID), GetPlugin)
 
 			if err == nil {
 				result.Plugins = append(result.Plugins, plugin)

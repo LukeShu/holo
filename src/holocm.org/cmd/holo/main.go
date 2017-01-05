@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"os"
 
+	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
 )
 
@@ -49,7 +50,7 @@ func main() {
 	}
 
 	//check that it is a known command word
-	var command func([]*EntityHandle, map[int]bool)
+	var command func([]*impl.EntityHandle, map[int]bool)
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
@@ -95,7 +96,7 @@ func main() {
 	}
 
 	//ask all plugins to scan for entities
-	var entities []*EntityHandle
+	var entities []*impl.EntityHandle
 	for _, plugin := range config.Plugins {
 		pluginEntities, err := plugin.Scan()
 		if err != nil {
@@ -109,7 +110,7 @@ func main() {
 
 	//if there are selectors, check which entities have been selected by them
 	if len(selectors) > 0 {
-		selectedEntities := make([]*EntityHandle, 0, len(entities))
+		selectedEntities := make([]*impl.EntityHandle, 0, len(entities))
 		for _, entity := range entities {
 			isEntitySelected := false
 			for _, selector := range selectors {
@@ -156,7 +157,7 @@ func commandHelp() {
 	fmt.Printf("\nSee `man 8 holo` for details.\n")
 }
 
-func commandApply(entities []*EntityHandle, options map[int]bool) {
+func commandApply(entities []*impl.EntityHandle, options map[int]bool) {
 	AcquireLockfile()
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
@@ -169,7 +170,7 @@ func commandApply(entities []*EntityHandle, options map[int]bool) {
 	ReleaseLockfile()
 }
 
-func commandScan(entities []*EntityHandle, options map[int]bool) {
+func commandScan(entities []*impl.EntityHandle, options map[int]bool) {
 	isPorcelain := options[optionScanPorcelain]
 	isShort := options[optionScanShort]
 	for _, entity := range entities {
@@ -184,7 +185,7 @@ func commandScan(entities []*EntityHandle, options map[int]bool) {
 	}
 }
 
-func commandDiff(entities []*EntityHandle, options map[int]bool) {
+func commandDiff(entities []*impl.EntityHandle, options map[int]bool) {
 	for _, entity := range entities {
 		dat, err := entity.RenderDiff()
 		if err != nil {
