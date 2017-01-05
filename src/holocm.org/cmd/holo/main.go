@@ -159,6 +159,7 @@ func commandHelp() {
 
 func commandApply(entities []*impl.EntityHandle, options map[int]bool) {
 	if !AcquireLockfile() {
+		RemoveRuntimeCache()
 		os.Exit(255)
 	}
 	defer ReleaseLockfile()
