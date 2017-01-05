@@ -22,17 +22,11 @@ package impl
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 
-	"github.com/holocm/holo/cmd/holo/internal/externalplugin"
 	"github.com/holocm/holo/cmd/holo/internal/output"
 	"github.com/holocm/holo/lib/holo"
 )
-
-// PluginAPIVersion is the version of holo-plugin-interface(7)
-// implemented by this.
-const PluginAPIVersion = 3
 
 type PluginHandle struct {
 	ID      string
@@ -41,22 +35,10 @@ type PluginHandle struct {
 	Info    map[string]string
 }
 
-func GetPlugin(id string, arg *string) (*PluginHandle, error) {
-	if arg == nil {
-		_arg := filepath.Join(RootDirectory(), "usr/lib/holo/holo-"+id)
-		arg = &_arg
-	}
-	runtime := holo.Runtime{
-		APIVersion:      PluginAPIVersion,
-		RootDirPath:     RootDirectory(),
-		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(CachePath(), id),
-		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
-	}
-	plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
-	if err != nil {
-		return nil, err
-	}
+type PluginGetter func(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error)
+
+func NewPluginHandle(id string, arg *string, runtime holo.Runtime, getPlugin PluginGetter) (*PluginHandle, error) {
+	plugin, err := getPlugin(id, arg, runtime)
 	handle := &PluginHandle{
 		ID:      id,
 		Plugin:  plugin,
@@ -69,7 +51,7 @@ func GetPlugin(id string, arg *string) (*PluginHandle, error) {
 	if handle.Info == nil {
 		return nil, fmt.Errorf("plugin holo-%s: \"info\" operation failed", handle.ID)
 	}
-	err = checkVersion(handle)
+	err = checkVersion(handle, runtime.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +59,7 @@ func GetPlugin(id string, arg *string) (*PluginHandle, error) {
 	return handle, nil
 }
 
-func checkVersion(handle *PluginHandle) error {
+func checkVersion(handle *PluginHandle, version int) error {
 	minVersion, err := strconv.Atoi(handle.Info["MIN_API_VERSION"])
 	if err != nil {
 		return err
@@ -86,10 +68,10 @@ func checkVersion(handle *PluginHandle) error {
 	if err != nil {
 		return err
 	}
-	if minVersion > PluginAPIVersion || maxVersion < PluginAPIVersion {
+	if minVersion > version || maxVersion < version {
 		return fmt.Errorf(
 			"plugin holo-%s is incompatible with this Holo (plugin min: %d, plugin max: %d, Holo: %d)",
-			handle.ID, minVersion, maxVersion, PluginAPIVersion,
+			handle.ID, minVersion, maxVersion, version,
 		)
 	}
 	return nil
