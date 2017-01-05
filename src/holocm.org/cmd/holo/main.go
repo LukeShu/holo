@@ -99,7 +99,10 @@ func main() {
 	//ask all plugins to scan for entities
 	var entities []holo.Entity
 	for _, plugin := range config.Plugins {
-		pluginEntities, _ := plugin.HoloScan()
+		pluginEntities, err := plugin.Plugin.HoloScan()
+		if err != nil {
+			output.Errorf(output.Stderr, "%s", err.Error())
+		}
 		if pluginEntities == nil {
 			//some fatal error occurred - it was already reported, so just exit
 			CleanupRuntimeCache()
@@ -115,7 +118,7 @@ func main() {
 		for _, entity := range entities {
 			isEntitySelected := false
 			for _, selector := range selectors {
-				if entity.(*external.Entity).MatchesSelector(selector.String) {
+				if external.MatchesSelector(entity, selector.String) {
 					isEntitySelected = true
 					selector.Used = true
 					//NOTE: don't break from the selectors loop; we want to
@@ -168,7 +171,7 @@ func commandApply(entities []holo.Entity, options map[int]bool) {
 	AcquireLockfile()
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		entity.(*external.Entity).Apply(withForce)
+		HoloApply(plugin, entity.(*external.Entity), withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -183,7 +186,7 @@ func commandScan(entities []holo.Entity, options map[int]bool) {
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			entity.(*external.Entity).PrintScanReport()
+			external.PrintScanReport(entity)
 		case isShort:
 			fmt.Println(entity.EntityID())
 		default:
@@ -194,7 +197,7 @@ func commandScan(entities []holo.Entity, options map[int]bool) {
 
 func commandDiff(entities []holo.Entity, options map[int]bool) {
 	for _, entity := range entities {
-		dat, err := entity.(*external.Entity).RenderDiff()
+		dat, err := external.RenderDiff(entity.(*external.Entity).Plugin, entity.EntityID())
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}

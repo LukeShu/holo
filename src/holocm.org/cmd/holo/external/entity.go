@@ -34,7 +34,7 @@ import (
 
 //Entity represents an entity known to some Holo plugin.
 type Entity struct {
-	plugin       *Plugin
+	Plugin       *Plugin
 	id           string
 	actionVerb   string
 	actionReason string
@@ -44,7 +44,6 @@ type Entity struct {
 
 var _ holo.Entity = &Entity{}
 
-//EntityID returns a string that uniquely identifies the entity.
 func (e *Entity) EntityID() string { return e.id }
 
 func (e *Entity) EntitySource() []string { return e.sourceFiles }
@@ -58,13 +57,13 @@ func (e *Entity) EntityAction() string {
 	return fmt.Sprintf("%s (%s)", e.actionVerb, e.actionReason)
 }
 
-//MatchesSelector checks whether the given string is either the entity ID or a
-//source file of this entity.
-func (e *Entity) MatchesSelector(value string) bool {
-	if e.id == value {
+// MatchesSelector checks whether the given string is either the
+// entity ID or a source file of this entity.
+func MatchesSelector(e holo.Entity, value string) bool {
+	if e.EntityID() == value {
 		return true
 	}
-	for _, file := range e.sourceFiles {
+	for _, file := range e.EntitySource() {
 		if file == value {
 			return true
 		}
@@ -74,8 +73,8 @@ func (e *Entity) MatchesSelector(value string) bool {
 
 //PrintReport prints the scan report describing this Entity.
 func (e *Entity) PrintReport(withAction bool) {
-	//print initial line with action and entity ID
-	//(note that output.Stdout != os.Stdout)
+	// print initial line with action and entity ID (note that
+	// output.Stdout != os.Stdout)
 	var lineFormat string
 	if e.actionVerb == "" || !withAction {
 		lineFormat = "%12s %s\n"
@@ -90,7 +89,7 @@ func (e *Entity) PrintReport(withAction bool) {
 		fmt.Fprintf(output.Stdout, " (%s)\n", e.actionReason)
 	}
 
-	//print info lines
+	// print info lines
 	for _, line := range e.EntityUserInfo() {
 		fmt.Fprintf(output.Stdout, lineFormat, line.Key, line.Val)
 	}
@@ -98,8 +97,8 @@ func (e *Entity) PrintReport(withAction bool) {
 	os.Stdout.Sync()
 }
 
-//PrintScanReport reproduces the original scan report for this Entity.
-func (e *Entity) PrintScanReport() {
+// PrintScanReport reproduces the original scan report for an Entity.
+func PrintScanReport(e holo.Entity) {
 	fmt.Fprintf(output.Stdout, "ENTITY: %s\n", e.EntityID())
 	fmt.Fprintf(output.Stdout, "ACTION: %s\n", e.EntityAction())
 
@@ -113,62 +112,14 @@ func (e *Entity) PrintScanReport() {
 	output.Stdout.EndParagraph()
 }
 
-//Apply performs the complete application algorithm for the given Entity.
-func (e *Entity) Apply(withForce bool) {
-	// track whether the report was already printed
-	tracker := &output.PrologueTracker{Printer: func() { e.PrintReport(true) }}
-	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}
-	stderr := &output.PrologueWriter{Tracker: tracker, Writer: output.Stderr}
-
-	result := e.plugin.HoloApply(e.id, withForce, stdout, stderr)
-
-	var showReport bool
-	var showDiff bool
-	switch result {
-	case holo.ApplyApplied:
-		showReport = true
-		showDiff = false
-	case holo.ApplyAlreadyApplied:
-		showReport = false
-		showDiff = false
-	case holo.ApplyExternallyChanged:
-		output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
-		showReport = false
-		showDiff = true
-	case holo.ApplyExternallyDeleted:
-		output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
-		showReport = true
-		showDiff = false
-	default: // assume holo.ApplyErr
-		return
-	}
-
-	if showReport {
-		tracker.Exec()
-	}
-	if showDiff {
-		diff, err := e.RenderDiff()
-		if err != nil {
-			output.Errorf(stderr, err.Error())
-			return
-		}
-		// indent diff
-		indent := []byte("    ")
-		diff = regexp.MustCompile("(?m:^)").ReplaceAll(diff, indent)
-		diff = bytes.TrimSuffix(diff, indent)
-
-		tracker.Exec()
-		output.Stdout.EndParagraph()
-		output.Stdout.Write(diff)
-	}
-}
-
-//RenderDiff creates a unified diff of a target file and its last provisioned
-//version, similar to `diff /var/lib/holo/files/provisioned/$FILE $FILE`, but it also
-//handles symlinks and missing files gracefully. The output is always a patch
-//that can be applied to last provisioned version into the current version.
-func (e *Entity) RenderDiff() ([]byte, error) {
-	new, cur := e.plugin.HoloDiff(e.EntityID())
+// RenderDiff creates a unified diff of a target file and its last
+// provisioned version, similar to `diff
+// /var/lib/holo/files/provisioned/$FILE $FILE`, but it also handles
+// symlinks and missing files gracefully. The output is always a patch
+// that can be applied to last provisioned version into the current
+// version.
+func RenderDiff(p holo.Plugin, entityID string) ([]byte, error) {
+	new, cur := p.HoloDiff(entityID)
 	if new == "" && cur == "" {
 		return nil, nil
 	}
