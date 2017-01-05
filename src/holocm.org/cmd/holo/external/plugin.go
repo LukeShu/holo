@@ -88,9 +88,7 @@ func (p *Plugin) Command(args []string, fd1 io.Writer, fd2 io.Writer, fd3 *os.Fi
 	env = append(env, "HOLO_CACHE_DIR="+filepath.Clean(p.Runtime.CacheDirPath))
 	env = append(env, "HOLO_RESOURCE_DIR="+filepath.Clean(p.Runtime.ResourceDirPath))
 	env = append(env, "HOLO_STATE_DIR="+filepath.Clean(p.Runtime.StateDirPath))
-	if os.Getenv("HOLO_ROOT_DIR") == "" {
-		env = append(env, "HOLO_ROOT_DIR="+filepath.Clean(p.Runtime.RootDirPath))
-	}
+	env = append(env, "HOLO_ROOT_DIR="+filepath.Clean(p.Runtime.RootDirPath))
 	cmd.Env = env
 
 	return cmd

@@ -54,22 +54,29 @@ func (p FilesPlugin) HoloScan() ([]holo.Entity, error) {
 }
 
 func (p FilesPlugin) HoloApply(entityID string, force bool, stdout, stderr io.Writer) holo.ApplyResult {
-	return p.getEntity(entityID).Apply(force, stdout, stderr)
+	e, err := p.getEntity(entityID)
+	if err != nil {
+		return holo.NewApplyError(err)
+	}
+	return e.Apply(force, stdout, stderr)
 }
 
 func (p FilesPlugin) HoloDiff(entityID string) (string, string) {
-	selectedEntity := p.getEntity(entityID)
+	selectedEntity, err := p.getEntity(entityID)
+	if err != nil {
+		return "", ""
+	}
 	new := selectedEntity.PathIn(p.provisionedDirectory())
 	cur := selectedEntity.PathIn(p.targetDirectory())
 	return new, cur
 }
 
-func (p FilesPlugin) getEntity(entityID string) *FilesEntity {
+func (p FilesPlugin) getEntity(entityID string) (*FilesEntity, error) {
 	entities := p.ScanRepo()
 	if entities == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
-		os.Exit(1)
+		return nil, errors.New("")
 	}
 	var selectedEntity *FilesEntity
 	for _, entity := range entities {
@@ -80,9 +87,9 @@ func (p FilesPlugin) getEntity(entityID string) *FilesEntity {
 	}
 	if selectedEntity == nil {
 		fmt.Fprintf(os.Stderr, "!! unknown entity ID \"%s\"\n", entityID)
-		os.Exit(1)
+		return nil, errors.New("")
 	}
-	return selectedEntity
+	return selectedEntity, nil
 }
 
 func NewFilesPlugin(r holo.Runtime) holo.Plugin {

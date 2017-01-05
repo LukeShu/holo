@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"holocm.org/cmd/holo/output"
 )
@@ -34,35 +33,29 @@ var (
 	lockFile *os.File
 )
 
-//AcquireLockfile will create a lock file to ensure that only one instance of
-//Holo is running at the same time. If the operation fails, it will os.Exit().
-func AcquireLockfile() {
+// AcquireLockfile will create a lock file to ensure that only one
+// instance of Holo is running at the same time.  Returns whether the
+// lock was successfully aquired.
+func AcquireLockfile() bool {
 	//where to store the lock file?
-	if RootDirectory() == "/" {
-		lockPath = "/run/holo.pid"
-	} else {
-		lockPath = filepath.Join(RootDirectory(), "holo.pid")
-	}
+	lockPath = filepath.Join(RootDirectory(), "run/holo.pid")
 
 	var err error
 	lockFile, err = os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		output.Errorf(output.Stderr, "Cannot create lock file %s: %s", lockPath, err.Error())
-		//is this the "file exists" error that indicates another running instance?
-		suberr := err.(*os.PathError).Err
-		if errno, ok := suberr.(syscall.Errno); ok {
-			if errno == syscall.EEXIST {
-				fmt.Fprintln(output.Stderr, "This usually means that another instance of Holo is currently running.")
-				fmt.Fprintln(output.Stderr, "If not, you can try to delete the lock file manually.")
-			}
+		if os.IsExist(err) {
+			fmt.Fprintln(output.Stderr, "This usually means that another instance of Holo is currently running.")
+			fmt.Fprintln(output.Stderr, "If not, you can try to delete the lock file manually.")
 		}
-		os.Exit(255)
+		return false
 	}
 	fmt.Fprintf(lockFile, "%d\n", os.Getpid())
 	lockFile.Sync()
+	return true
 }
 
-//ReleaseLockfile removes the lock file created by AcquireLockfile.
+// ReleaseLockfile removes the lock file created by AcquireLockfile.
 func ReleaseLockfile() {
 	err := lockFile.Close()
 	if err != nil {

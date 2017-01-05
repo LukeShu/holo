@@ -32,7 +32,6 @@ func (e ApplyMessage) Send() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
 	}
-	os.Exit(0)
 }
 
 type applyApplied struct{}

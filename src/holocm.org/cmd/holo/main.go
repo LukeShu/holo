@@ -76,7 +76,7 @@ func main() {
 	config := ReadConfiguration()
 	if config == nil {
 		//some fatal error occurred - it was already reported, so just exit
-		CleanupRuntimeCache()
+		RemoveRuntimeCache()
 		os.Exit(255)
 	}
 
@@ -101,7 +101,7 @@ func main() {
 		pluginEntities, err := plugin.Scan()
 		if err != nil {
 			output.Errorf(output.Stderr, "%s", err.Error())
-			CleanupRuntimeCache()
+			RemoveRuntimeCache()
 			os.Exit(255)
 		}
 		entities = append(entities, pluginEntities...)
@@ -138,14 +138,14 @@ func main() {
 		}
 	}
 	if hasUnrecognizedArgs {
-		CleanupRuntimeCache()
+		RemoveRuntimeCache()
 		os.Exit(255)
 	}
 
 	//execute command
 	command(entities, options)
 
-	CleanupRuntimeCache()
+	RemoveRuntimeCache()
 }
 
 func commandHelp() {
@@ -158,7 +158,10 @@ func commandHelp() {
 }
 
 func commandApply(entities []*impl.EntityHandle, options map[int]bool) {
-	AcquireLockfile()
+	if !AcquireLockfile() {
+		os.Exit(255)
+	}
+	defer ReleaseLockfile()
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
 		entity.Apply(withForce)
@@ -167,7 +170,6 @@ func commandApply(entities []*impl.EntityHandle, options map[int]bool) {
 		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
-	ReleaseLockfile()
 }
 
 func commandScan(entities []*impl.EntityHandle, options map[int]bool) {

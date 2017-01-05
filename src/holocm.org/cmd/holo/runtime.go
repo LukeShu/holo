@@ -21,52 +21,52 @@
 package main
 
 import (
-	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"holocm.org/cmd/holo/output"
+	"holocm.org/lib/holo"
 )
 
-var cachePath string
+var (
+	rootDir  string
+	cacheDir string
+)
 
 func init() {
-	rootDir := RootDirectory()
-	if rootDir == "/" {
-		//in productive mode, honor the TMPDIR variable (through os.TempDir)
-		//and include the PID to avoid collisions between parallel runs of
-		//"holo scan" (which is not protected by the /run/holo.pid lockfile)
-		cachePath = filepath.Join(os.TempDir(), fmt.Sprintf("holo-%d", os.Getpid()))
-	} else {
-		//during unit tests, we are free to choose a simple, reproducible cache
-		//location
-		cachePath = filepath.Join(rootDir, "tmp/holo")
+	rootDir = os.Getenv("HOLO_ROOT_DIR")
+	if rootDir == "" {
+		rootDir = "/"
 	}
 
-	err := doInit()
+	// BUG(lukeshu): Consider inspecting os.TempDir() to see if it
+	// is below rootDir.  I don't think it's important to do so
+	// because us ioutil.TempDir() avoids conflicts.
+	var err error
+	cacheDir, err = ioutil.TempDir(os.TempDir(), "holo.")
 	if err != nil {
 		output.Errorf(output.Stderr, err.Error())
 		os.Exit(255)
 	}
 }
 
-func doInit() error {
-	//if the cache directory exists from a previous run, remove it recursively
-	err := os.RemoveAll(cachePath)
-	if err != nil {
-		return err
+// RootDirectory returns the environment variable $HOLO_ROOT_DIR, or
+// else the default value "/".
+func RootDirectory() string {
+	return rootDir
+}
+
+func RemoveRuntimeCache() {
+	_ = os.RemoveAll(cacheDir) //fail silently
+}
+
+func NewRuntime(id string) holo.Runtime {
+	return holo.Runtime{
+		APIVersion:      3,
+		RootDirPath:     RootDirectory(),
+		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
+		CacheDirPath:    filepath.Join(cacheDir, id),
+		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
 	}
-
-	//create the cache directory
-	return os.MkdirAll(cachePath, 0700)
-}
-
-//CachePath returns the path below which plugin cache directories can be allocated.
-func CachePath() string {
-	return cachePath
-}
-
-//CleanupRuntimeCache tries to cleanup the CachePath().
-func CleanupRuntimeCache() {
-	_ = os.RemoveAll(cachePath) //fail silently
 }
