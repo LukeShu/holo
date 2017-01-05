@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package externalplugin
+package impl
 
 import (
 	"bytes"
@@ -32,26 +32,81 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-//Entity represents an entity known to some Holo plugin.
-type Entity struct {
-	Plugin       *Plugin
-	id           string
-	actionVerb   string
-	actionReason string
-	sourceFiles  []string
-	infoLines    []holo.KV
+// MatchesSelector checks whether the given string is either the
+// entity ID or a source file of this entity.
+func MatchesSelector(e holo.Entity, value string) bool {
+	if e.EntityID() == value {
+		return true
+	}
+	for _, file := range e.EntitySource() {
+		if file == value {
+			return true
+		}
+	}
+	return false
 }
 
-var _ holo.Entity = &Entity{}
+// PrintReport prints the scan report describing this Entity.
+//
+// The output should look like
+//
+//               lined up
+//               V
+//     ACTION_VERB ENTITY (ACTION_REASON)
+//            KEY1 VAL1
+//            KEY2 VAL2
+//
+// or
+//
+//                12
+//                V
+//     123456789012345678901234567890
+//                V
+//     ENTITY (ACTION_REASON)
+//             KEY1 VAL1
+//             KEY2 VAL2
+//
+// "ENTITY" is colored with ASNI escape codes.  " (ACTION_REASON)" is
+// omitted if the action doesn't have a reason specified.
+func PrintReport(e holo.Entity, withAction bool) {
+	// Initial header line
+	align := 12
+	verb, reason := e.EntityAction()
+	if withAction && verb != "" {
+		align = len(verb)
+		fmt.Fprintf(output.Stdout, "%s ", verb)
+	}
+	fmt.Fprintf(output.Stdout, "\x1b[1m%s\x1b[0m", e.EntityID())
+	if reason != "" {
+		fmt.Fprintf(output.Stdout, " (%s)", reason)
+	}
+	output.Stdout.Write([]byte{'\n'})
 
-func (e *Entity) EntityID() string { return e.id }
+	// Remaining info lines
+	for _, line := range e.EntityUserInfo() {
+		fmt.Fprintf(output.Stdout, "%*s %s\n", align, line.Key, line.Val)
+	}
+	output.Stdout.EndParagraph()
+	os.Stdout.Sync()
+}
 
-func (e *Entity) EntitySource() []string { return e.sourceFiles }
+// PrintScanReport reproduces the original scan report for an Entity.
+func PrintScanReport(e holo.Entity) {
+	fmt.Fprintf(output.Stdout, "ENTITY: %s\n", e.EntityID())
+	if verb, reason := e.EntityAction(); reason == "" {
+		fmt.Fprintf(output.Stdout, "ACTION: %s\n", verb)
+	} else {
+		fmt.Fprintf(output.Stdout, "ACTION: %s (%s)\n", verb, reason)
+	}
 
-func (e *Entity) EntityUserInfo() []holo.KV { return e.infoLines }
+	for _, sourceFile := range e.EntitySource() {
+		fmt.Fprintf(output.Stdout, "SOURCE: %s\n", sourceFile)
+	}
+	for _, infoLine := range e.EntityUserInfo() {
+		fmt.Fprintf(output.Stdout, "%s: %s\n", infoLine.Key, infoLine.Val)
+	}
 
-func (e *Entity) EntityAction() (string, string) {
-	return e.actionVerb, e.actionReason
+	output.Stdout.EndParagraph()
 }
 
 // RenderDiff creates a unified diff of a target file and its last
@@ -154,4 +209,5 @@ func checkFile(path string) (pathToUse string, returnError error) {
 	default:
 		return path, fmt.Errorf("file %s has wrong file type", path)
 	}
+
 }

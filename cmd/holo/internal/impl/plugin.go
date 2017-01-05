@@ -96,9 +96,9 @@ func checkVersion(handle *PluginHandle) error {
 	return nil
 }
 
-func HoloApply(handle *PluginHandle, entity *externalplugin.Entity, withForce bool) {
+func HoloApply(handle *PluginHandle, entity holo.Entity, withForce bool) {
 	// track whether the report was already printed
-	tracker := &output.PrologueTracker{Printer: func() { entity.PrintReport(true) }}
+	tracker := &output.PrologueTracker{Printer: func() { PrintReport(entity, true) }}
 	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}
 	stderr := &output.PrologueWriter{Tracker: tracker, Writer: output.Stderr}
 
@@ -130,7 +130,7 @@ func HoloApply(handle *PluginHandle, entity *externalplugin.Entity, withForce bo
 		tracker.Exec()
 	}
 	if showDiff {
-		diff, err := externalplugin.RenderDiff(handle.Plugin, entity.EntityID())
+		diff, err := RenderDiff(handle.Plugin, entity.EntityID())
 		if err != nil {
 			output.Errorf(stderr, err.Error())
 			return

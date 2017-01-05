@@ -80,7 +80,7 @@ func (entity *FilesEntity) EntityID() string {
 // EntityAction returns a verb describing the action to be taken when
 // applying this entity, and optionally a reason justifying that
 // action.
-func (entity *FilesEntity) EntityAction() (string, string) {
+func (entity *FilesEntity) EntityAction() (verb, reason string) {
 	if len(entity.resources) == 0 {
 		_, _, assessment := entity.scanOrphan()
 		return "Scrubbing", assessment

@@ -128,7 +128,7 @@ func Main() (exitCode int) {
 			for _, entity := range entities {
 				isEntitySelected := false
 				for _, selector := range selectors {
-					if externalplugin.MatchesSelector(entity, selector.String) {
+					if impl.MatchesSelector(entity, selector.String) {
 						isEntitySelected = true
 						selector.Used = true
 						//NOTE: don't break from the selectors loop; we want to
@@ -186,7 +186,7 @@ func commandApply(entities []holo.Entity, options map[int]bool) (exitCode int) {
 
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		impl.HoloApply(nil /*plugin*/, entity.(*externalplugin.Entity), withForce)
+		impl.HoloApply(nil /*plugin*/, entity, withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -202,11 +202,11 @@ func commandScan(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			externalplugin.PrintScanReport(entity)
+			impl.PrintScanReport(entity)
 		case isShort:
 			fmt.Println(entity.EntityID())
 		default:
-			entity.(*externalplugin.Entity).PrintReport(false)
+			impl.PrintReport(entity, false)
 		}
 	}
 
@@ -215,7 +215,7 @@ func commandScan(entities []holo.Entity, options map[int]bool) (exitCode int) {
 
 func commandDiff(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
-		buf, err := externalplugin.RenderDiff(entity.(*externalplugin.Entity).Plugin, entity.EntityID())
+		buf, err := impl.RenderDiff(entity.(*externalplugin.Entity).Plugin, entity.EntityID())
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}
