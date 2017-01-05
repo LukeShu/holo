@@ -24,9 +24,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
-	"syscall"
 
 	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
@@ -39,16 +37,72 @@ type EntityHandle struct {
 
 // MatchesSelector checks whether the given string is either the
 // entity ID or a source file of this entity.
-func MatchesSelector(e holo.Entity, value string) bool {
-	if e.EntityID() == value {
+func (ehandle *EntityHandle) MatchesSelector(value string) bool {
+	if ehandle.Entity.EntityID() == value {
 		return true
 	}
-	for _, file := range e.EntitySource() {
+	for _, file := range ehandle.Entity.EntitySource() {
 		if file == value {
 			return true
 		}
 	}
 	return false
+}
+
+func (ehandle *EntityHandle) Apply(withForce bool) {
+	// track whether the report was already printed
+	tracker := &output.PrologueTracker{Printer: func() { ehandle.PrintReport(true) }}
+	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}
+	stderr := &output.PrologueWriter{Tracker: tracker, Writer: output.Stderr}
+
+	result := ehandle.PluginHandle.Plugin.HoloApply(ehandle.Entity.EntityID(), withForce, stdout, stderr)
+
+	var showReport bool
+	var showDiff bool
+	switch result {
+	case holo.ApplyApplied:
+		showReport = true
+		showDiff = false
+	case holo.ApplyAlreadyApplied:
+		showReport = false
+		showDiff = false
+	case holo.ApplyExternallyChanged:
+		output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
+		showReport = false
+		showDiff = true
+	case holo.ApplyExternallyDeleted:
+		output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
+		showReport = true
+		showDiff = false
+	default:
+		if err, ok := result.(holo.ApplyError); ok {
+			output.Errorf(stderr, err.Error())
+			showReport = false
+			showDiff = false
+		} else {
+			// this should never happen
+			panic(result)
+		}
+	}
+
+	if showReport {
+		tracker.Exec()
+	}
+	if showDiff {
+		diff, err := ehandle.RenderDiff()
+		if err != nil {
+			output.Errorf(stderr, err.Error())
+			return
+		}
+		// indent diff
+		indent := []byte("    ")
+		diff = regexp.MustCompile("(?m:^)").ReplaceAll(diff, indent)
+		diff = bytes.TrimSuffix(diff, indent)
+
+		tracker.Exec()
+		output.Stdout.EndParagraph()
+		output.Stdout.Write(diff)
+	}
 }
 
 // PrintReport prints the scan report describing this Entity.
@@ -73,22 +127,22 @@ func MatchesSelector(e holo.Entity, value string) bool {
 //
 // "ENTITY" is colored with ASNI escape codes.  " (ACTION_REASON)" is
 // omitted if the action doesn't have a reason specified.
-func PrintReport(e holo.Entity, withAction bool) {
+func (ehandle *EntityHandle) PrintReport(withAction bool) {
 	// Initial header line
 	align := 12
-	verb, reason := e.EntityAction()
+	verb, reason := ehandle.Entity.EntityAction()
 	if withAction && verb != "" {
 		align = len(verb)
 		fmt.Fprintf(output.Stdout, "%s ", verb)
 	}
-	fmt.Fprintf(output.Stdout, "\x1b[1m%s\x1b[0m", e.EntityID())
+	fmt.Fprintf(output.Stdout, "\x1b[1m%s\x1b[0m", ehandle.Entity.EntityID())
 	if reason != "" {
 		fmt.Fprintf(output.Stdout, " (%s)", reason)
 	}
 	output.Stdout.Write([]byte{'\n'})
 
 	// Remaining info lines
-	for _, line := range e.EntityUserInfo() {
+	for _, line := range ehandle.Entity.EntityUserInfo() {
 		fmt.Fprintf(output.Stdout, "%*s %s\n", align, line.Key, line.Val)
 	}
 	output.Stdout.EndParagraph()
@@ -96,18 +150,18 @@ func PrintReport(e holo.Entity, withAction bool) {
 }
 
 // PrintScanReport reproduces the original scan report for an Entity.
-func PrintScanReport(e holo.Entity) {
-	fmt.Fprintf(output.Stdout, "ENTITY: %s\n", e.EntityID())
-	if verb, reason := e.EntityAction(); reason == "" {
+func (ehandle *EntityHandle) PrintScanReport() {
+	fmt.Fprintf(output.Stdout, "ENTITY: %s\n", ehandle.Entity.EntityID())
+	if verb, reason := ehandle.Entity.EntityAction(); reason == "" {
 		fmt.Fprintf(output.Stdout, "ACTION: %s\n", verb)
 	} else {
 		fmt.Fprintf(output.Stdout, "ACTION: %s (%s)\n", verb, reason)
 	}
 
-	for _, sourceFile := range e.EntitySource() {
+	for _, sourceFile := range ehandle.Entity.EntitySource() {
 		fmt.Fprintf(output.Stdout, "SOURCE: %s\n", sourceFile)
 	}
-	for _, infoLine := range e.EntityUserInfo() {
+	for _, infoLine := range ehandle.Entity.EntityUserInfo() {
 		fmt.Fprintf(output.Stdout, "%s: %s\n", infoLine.Key, infoLine.Val)
 	}
 
@@ -120,99 +174,10 @@ func PrintScanReport(e holo.Entity) {
 // symlinks and missing files gracefully. The output is always a patch
 // that can be applied to last provisioned version into the current
 // version.
-func RenderDiff(p holo.Plugin, entityID string) ([]byte, error) {
-	new, cur := p.HoloDiff(entityID)
+func (ehandle *EntityHandle) RenderDiff() ([]byte, error) {
+	new, cur := ehandle.PluginHandle.Plugin.HoloDiff(ehandle.Entity.EntityID())
 	if new == "" && cur == "" {
 		return nil, nil
 	}
 	return renderFileDiff(new, cur)
-}
-
-func renderFileDiff(fromPath, toPath string) ([]byte, error) {
-	fromPathToUse, err := checkFile(fromPath)
-	if err != nil {
-		return nil, err
-	}
-	toPathToUse, err := checkFile(toPath)
-	if err != nil {
-		return nil, err
-	}
-
-	//run git-diff to obtain the diff
-	var buffer bytes.Buffer
-	cmd := exec.Command("git", "diff", "--no-index", "--", fromPathToUse, toPathToUse)
-	cmd.Stdout = &buffer
-	cmd.Stderr = output.Stderr
-
-	//error "exit code 1" is normal for different files, only exit code > 2 means trouble
-	err = cmd.Run()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-				if status.ExitStatus() == 1 {
-					err = nil
-				}
-			}
-		}
-	}
-	//did a relevant error occur?
-	if err != nil {
-		return nil, err
-	}
-
-	//remove "index <SHA1>..<SHA1> <mode>" lines
-	result := buffer.Bytes()
-	rx := regexp.MustCompile(`(?m:^index .*$)\n`)
-	result = rx.ReplaceAll(result, nil)
-
-	//fix paths in headers, especially remove the unnecessary "a/" and "b/"
-	//path prefixes
-	rx = regexp.MustCompile(`(?m:^diff --git .*$)`)
-	result = rx.ReplaceAll(result, []byte(fmt.Sprintf("diff --holo %s %s", fromPath, toPath)))
-	rx = regexp.MustCompile(`(?m:^--- a/.*$)`)
-	result = rx.ReplaceAll(result, []byte("--- "+fromPath))
-	rx = regexp.MustCompile(`(?m:^\+\+\+ b/.*$)`)
-	result = rx.ReplaceAll(result, []byte("+++ "+toPath))
-
-	//colorize diff
-	rules := []output.LineColorizingRule{
-		{[]byte("diff "), []byte("\x1B[1m")},
-		{[]byte("new "), []byte("\x1B[1m")},
-		{[]byte("deleted "), []byte("\x1B[1m")},
-		{[]byte("--- "), []byte("\x1B[1m")},
-		{[]byte("+++ "), []byte("\x1B[1m")},
-		{[]byte("@@ "), []byte("\x1B[36m")},
-		{[]byte("-"), []byte("\x1B[31m")},
-		{[]byte("+"), []byte("\x1B[32m")},
-	}
-
-	return output.ColorizeLines(result, rules), nil
-}
-
-func checkFile(path string) (pathToUse string, returnError error) {
-	if path == "/dev/null" {
-		return path, nil
-	}
-
-	//check that files are either non-existent (in which case git-diff needs to
-	//be given /dev/null instead or manageable (e.g. we can't diff directories
-	//or device files)
-	info, err := os.Lstat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "/dev/null", nil
-		}
-		return path, err
-	}
-
-	//can only diff regular files and symlinks
-	switch {
-	case info.Mode().IsRegular():
-		return path, nil //regular file is ok
-	case (info.Mode() & os.ModeType) == os.ModeSymlink:
-		return path, nil //symlink is ok
-	default:
-		return path, fmt.Errorf("file %s has wrong file type", path)
-	}
-
 }

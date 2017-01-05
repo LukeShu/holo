@@ -21,18 +21,16 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strconv"
 
 	"holocm.org/cmd/holo/external"
-	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
-//PluginAPIVersion is the version of holo-plugin-interface(7) implemented by this.
+// PluginAPIVersion is the version of holo-plugin-interface(7)
+// implemented by this.
 const PluginAPIVersion = 3
 
 type PluginHandle struct {
@@ -109,60 +107,4 @@ func (handle *PluginHandle) Scan() ([]*EntityHandle, error) {
 		}
 	}
 	return ret, nil
-}
-
-func (handle *PluginHandle) Apply(entity holo.Entity, withForce bool) {
-	// track whether the report was already printed
-	tracker := &output.PrologueTracker{Printer: func() { PrintReport(entity, true) }}
-	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}
-	stderr := &output.PrologueWriter{Tracker: tracker, Writer: output.Stderr}
-
-	result := handle.Plugin.HoloApply(entity.EntityID(), withForce, stdout, stderr)
-
-	var showReport bool
-	var showDiff bool
-	switch result {
-	case holo.ApplyApplied:
-		showReport = true
-		showDiff = false
-	case holo.ApplyAlreadyApplied:
-		showReport = false
-		showDiff = false
-	case holo.ApplyExternallyChanged:
-		output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
-		showReport = false
-		showDiff = true
-	case holo.ApplyExternallyDeleted:
-		output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
-		showReport = true
-		showDiff = false
-	default:
-		if err, ok := result.(holo.ApplyError); ok {
-			output.Errorf(stderr, err.Error())
-			showReport = false
-			showDiff = false
-		} else {
-			// this should never happen
-			panic(result)
-		}
-	}
-
-	if showReport {
-		tracker.Exec()
-	}
-	if showDiff {
-		diff, err := RenderDiff(handle.Plugin, entity.EntityID())
-		if err != nil {
-			output.Errorf(stderr, err.Error())
-			return
-		}
-		// indent diff
-		indent := []byte("    ")
-		diff = regexp.MustCompile("(?m:^)").ReplaceAll(diff, indent)
-		diff = bytes.TrimSuffix(diff, indent)
-
-		tracker.Exec()
-		output.Stdout.EndParagraph()
-		output.Stdout.Write(diff)
-	}
 }

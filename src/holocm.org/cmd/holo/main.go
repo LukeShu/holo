@@ -113,7 +113,7 @@ func main() {
 		for _, entity := range entities {
 			isEntitySelected := false
 			for _, selector := range selectors {
-				if MatchesSelector(entity.Entity, selector.String) {
+				if entity.MatchesSelector(selector.String) {
 					isEntitySelected = true
 					selector.Used = true
 					//NOTE: don't break from the selectors loop; we want to
@@ -160,7 +160,7 @@ func commandApply(entities []*EntityHandle, options map[int]bool) {
 	AcquireLockfile()
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		entity.PluginHandle.Apply(entity.Entity, withForce)
+		entity.Apply(withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -175,18 +175,18 @@ func commandScan(entities []*EntityHandle, options map[int]bool) {
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			PrintScanReport(entity.Entity)
+			entity.PrintScanReport()
 		case isShort:
 			fmt.Println(entity.Entity.EntityID())
 		default:
-			PrintReport(entity.Entity, false)
+			entity.PrintReport(false)
 		}
 	}
 }
 
 func commandDiff(entities []*EntityHandle, options map[int]bool) {
 	for _, entity := range entities {
-		dat, err := RenderDiff(entity.PluginHandle.Plugin, entity.Entity.EntityID())
+		dat, err := entity.RenderDiff()
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.Entity.EntityID(), err.Error())
 		}
