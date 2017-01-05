@@ -110,7 +110,10 @@ func Main() (exitCode int) {
 		//ask all plugins to scan for entities
 		var entities []holo.Entity
 		for _, plugin := range config.Plugins {
-			pluginEntities, _ := plugin.HoloScan(output.Stderr)
+			pluginEntities, err := plugin.Plugin.HoloScan(output.Stderr)
+			if err != nil {
+				output.Errorf(output.Stderr, "%s", err.Error())
+			}
 			if pluginEntities == nil {
 				//some fatal error occurred - it was already reported, so just exit
 				return 255
@@ -125,7 +128,7 @@ func Main() (exitCode int) {
 			for _, entity := range entities {
 				isEntitySelected := false
 				for _, selector := range selectors {
-					if entity.(*externalplugin.Entity).MatchesSelector(selector.String) {
+					if externalplugin.MatchesSelector(entity, selector.String) {
 						isEntitySelected = true
 						selector.Used = true
 						//NOTE: don't break from the selectors loop; we want to
@@ -183,7 +186,7 @@ func commandApply(entities []holo.Entity, options map[int]bool) (exitCode int) {
 
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		entity.(*externalplugin.Entity).Apply(withForce)
+		impl.HoloApply(nil /*plugin*/, entity.(*externalplugin.Entity), withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -199,7 +202,7 @@ func commandScan(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			entity.(*externalplugin.Entity).PrintScanReport()
+			externalplugin.PrintScanReport(entity)
 		case isShort:
 			fmt.Println(entity.EntityID())
 		default:
@@ -212,7 +215,7 @@ func commandScan(entities []holo.Entity, options map[int]bool) (exitCode int) {
 
 func commandDiff(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
-		buf, err := entity.(*externalplugin.Entity).RenderDiff()
+		buf, err := externalplugin.RenderDiff(entity.(*externalplugin.Entity).Plugin, entity.EntityID())
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}

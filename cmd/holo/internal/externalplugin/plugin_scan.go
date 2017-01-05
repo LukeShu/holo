@@ -32,89 +32,72 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-//Scan discovers entities available for the given entity. Errors are reported
-//immediately and will result in nil being returned. "No entities found" will
-//be reported as a non-nil empty slice.
-//there are no entities.
+var scanParseLineRegex = regexp.MustCompile(`^\s*([^:]+): (.+)\s*$`)
+
+func scanParseLine(line string) (key, val string, err error) {
+	match := scanParseLineRegex.FindStringSubmatch(line)
+	if match == nil {
+		return "", "", fmt.Errorf("parse error (line was \"%s\")", line)
+	}
+	return match[1], match[2], nil
+}
+
+var scanParseActionRegex = regexp.MustCompile(`^([^()]+) \((.+)\)$`)
+
+func scanParseAction(action string) (verb, reason string) {
+	match := scanParseActionRegex.FindStringSubmatch(action)
+	if match == nil {
+		return action, ""
+	} else {
+		return match[1], match[2]
+	}
+}
+
+// Scan discovers entities available for the given entity. Errors are
+// reported immediately and will result in nil being returned. "No
+// entities found" will be reported as a non-nil empty slice.
 func (p *Plugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	var stdoutBuffer bytes.Buffer
 	err := p.Command([]string{"scan"}, &stdoutBuffer, output.Stderr, nil).Run()
 	if err != nil {
-		output.Errorf(output.Stderr, "scan with plugin %s failed: %s", p.ID(), err.Error())
-		return nil, err
+		return nil, fmt.Errorf("scan with plugin %s failed: %s", p.id, err.Error())
 	}
-	stdout := stdoutBuffer.String()
 
-	//parse scan output
-	lines := strings.Split(strings.TrimSpace(stdout), "\n")
-	lineRx := regexp.MustCompile(`^\s*([^:]+): (.+)\s*$`)
-	actionRx := regexp.MustCompile(`^([^()]+) \((.+)\)$`)
-	hadError := false
-	var currentEntity *Entity
-	var result []holo.Entity
-	for idx, line := range lines {
+	// parse stdout
+	result := []holo.Entity{} // non-nil
+	var currentEntity *Entity // a pointer to the last element of result
+	for idx, line := range strings.Split(strings.TrimSpace(stdoutBuffer.String()), "\n") {
 		//skip empty lines
 		if line == "" {
 			continue
 		}
 
-		//keep format strings from getting too long
-		errorIntro := fmt.Sprintf("error in scan report of %s, line %d", p.ID(), idx+1)
+		// keep format strings from getting too long
+		errorIntro := fmt.Sprintf("error in scan report of %s, line %d", p.id, idx+1)
 
-		//general line format is "key: value"
-		match := lineRx.FindStringSubmatch(line)
-		if match == nil {
-			output.Errorf(output.Stderr, "%s: parse error (line was \"%s\")", errorIntro, line)
-			hadError = true
-			continue
+		key, value, err := scanParseLine(line)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %s", errorIntro, err.Error())
 		}
-		key, value := match[1], match[2]
 
-		switch {
-		case key == "ENTITY":
-			//starting new entity
-			if currentEntity != nil {
-				result = append(result, currentEntity)
-			}
-			currentEntity = &Entity{plugin: p, id: value, actionVerb: "Working on"}
-		case currentEntity == nil:
-			//if not, we need to be inside an entity
-			//(i.e. line with idx = 0 must start an entity)
-			output.Errorf(output.Stderr, "%s: expected entity ID, found attribute \"%s\"", errorIntro, line)
-			hadError = true
-		case key == "SOURCE":
+		if currentEntity == nil && key != "ENTITY" {
+			return nil, fmt.Errorf("%s: expected entity ID, found attribute \"%s\"", errorIntro, line)
+		}
+
+		switch key {
+		case "ENTITY":
+			// starting new entity
+			currentEntity = &Entity{Plugin: p, id: value, actionVerb: "Working on"}
+			result = append(result, currentEntity)
+		case "SOURCE":
 			currentEntity.sourceFiles = append(currentEntity.sourceFiles, value)
-		case key == "ACTION":
-			//parse action verb/reason
-			match = actionRx.FindStringSubmatch(value)
-			if match == nil {
-				currentEntity.actionVerb = value
-				currentEntity.actionReason = ""
-			} else {
-				currentEntity.actionVerb = match[1]
-				currentEntity.actionReason = match[2]
-			}
+		case "ACTION":
+			// parse action verb/reason
+			currentEntity.actionVerb, currentEntity.actionReason = scanParseAction(value)
 		default:
 			//store unrecognized keys as info lines
-			currentEntity.infoLines = append(currentEntity.infoLines,
-				holo.KV{key, value},
-			)
+			currentEntity.infoLines = append(currentEntity.infoLines, holo.KV{key, value})
 		}
-	}
-
-	//store last entity
-	if currentEntity != nil {
-		result = append(result, currentEntity)
-	}
-
-	//report errors
-	if hadError {
-		return nil, fmt.Errorf("idk")
-	}
-
-	//on success, ensure non-nil return value
-	if result == nil {
-		result = []holo.Entity{}
 	}
 
 	sort.Sort(entitiesByID(result))
