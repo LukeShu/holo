@@ -59,7 +59,7 @@ type KV struct {
 type Entity interface {
 	EntityID() string
 	EntitySource() []string
-	EntityAction() string
+	EntityAction() (verb, reason string)
 	EntityUserInfo() []KV
 }
 

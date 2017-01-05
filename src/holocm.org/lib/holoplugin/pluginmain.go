@@ -50,8 +50,12 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 			for _, source := range entity.EntitySource() {
 				fmt.Printf("SOURCE: %s\n", source)
 			}
-			if entity.EntityAction() != "" {
-				fmt.Printf("ACTION: %s\n", entity.EntityAction())
+			if verb, reason := entity.EntityAction(); verb != "" {
+				if reason == "" {
+					fmt.Printf("ACTION: %s\n", verb)
+				} else {
+					fmt.Printf("ACTION: %s (%s)\n", verb, reason)
+				}
 			}
 			for _, kv := range entity.EntityUserInfo() {
 				fmt.Printf("%s: %s\n", kv.Key, kv.Val)

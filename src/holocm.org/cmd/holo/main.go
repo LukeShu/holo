@@ -118,7 +118,7 @@ func main() {
 		for _, entity := range entities {
 			isEntitySelected := false
 			for _, selector := range selectors {
-				if external.MatchesSelector(entity, selector.String) {
+				if MatchesSelector(entity, selector.String) {
 					isEntitySelected = true
 					selector.Used = true
 					//NOTE: don't break from the selectors loop; we want to
@@ -171,7 +171,7 @@ func commandApply(entities []holo.Entity, options map[int]bool) {
 	AcquireLockfile()
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		HoloApply(plugin, entity.(*external.Entity), withForce)
+		HoloApply(plugin, entity, withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -186,18 +186,18 @@ func commandScan(entities []holo.Entity, options map[int]bool) {
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			external.PrintScanReport(entity)
+			PrintScanReport(entity)
 		case isShort:
 			fmt.Println(entity.EntityID())
 		default:
-			entity.(*external.Entity).PrintReport(false)
+			PrintReport(entity, false)
 		}
 	}
 }
 
 func commandDiff(entities []holo.Entity, options map[int]bool) {
 	for _, entity := range entities {
-		dat, err := external.RenderDiff(entity.(*external.Entity).Plugin, entity.EntityID())
+		dat, err := RenderDiff(entity.(*external.Entity).Plugin, entity.EntityID())
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}

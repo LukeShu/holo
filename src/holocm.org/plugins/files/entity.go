@@ -78,12 +78,12 @@ func (target *FilesEntity) EntityID() string {
 	return "file:" + target.PathIn(target.plugin.targetDirectory())
 }
 
-func (target *FilesEntity) EntityAction() string {
+func (target *FilesEntity) EntityAction() (verb, reason string) {
 	if target.orphaned {
 		_, _, assessment := target.scanOrphanedTargetBase()
-		return fmt.Sprintf("Scrubbing (%s)\n", assessment)
+		return "Scrubbing", assessment
 	}
-	return ""
+	return "", ""
 }
 
 func (target *FilesEntity) EntitySource() []string {
