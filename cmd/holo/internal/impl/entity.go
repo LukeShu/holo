@@ -32,6 +32,11 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
+type EntityHandle struct {
+	PluginHandle *PluginHandle
+	Entity       holo.Entity
+}
+
 // MatchesSelector checks whether the given string is either the
 // entity ID or a source file of this entity.
 func MatchesSelector(e holo.Entity, value string) bool {

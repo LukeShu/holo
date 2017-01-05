@@ -25,10 +25,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/holocm/holo/cmd/holo/internal/externalplugin"
 	"github.com/holocm/holo/cmd/holo/internal/impl"
 	"github.com/holocm/holo/cmd/holo/internal/output"
-	"github.com/holocm/holo/lib/holo"
 )
 
 //this is populated at compile-time, see Makefile
@@ -59,7 +57,7 @@ func Main() (exitCode int) {
 	}
 
 	//check that it is a known command word
-	var command func([]holo.Entity, map[int]bool) int
+	var command func([]*impl.EntityHandle, map[int]bool) int
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
@@ -108,14 +106,11 @@ func Main() (exitCode int) {
 		}
 
 		//ask all plugins to scan for entities
-		var entities []holo.Entity
+		var entities []*impl.EntityHandle
 		for _, plugin := range config.Plugins {
-			pluginEntities, err := plugin.Plugin.HoloScan(output.Stderr)
+			pluginEntities, err := plugin.Scan()
 			if err != nil {
 				output.Errorf(output.Stderr, "%s", err.Error())
-			}
-			if pluginEntities == nil {
-				//some fatal error occurred - it was already reported, so just exit
 				return 255
 			}
 			entities = append(entities, pluginEntities...)
@@ -124,11 +119,11 @@ func Main() (exitCode int) {
 
 		//if there are selectors, check which entities have been selected by them
 		if len(selectors) > 0 {
-			selectedEntities := make([]holo.Entity, 0, len(entities))
+			selectedEntities := make([]*impl.EntityHandle, 0, len(entities))
 			for _, entity := range entities {
 				isEntitySelected := false
 				for _, selector := range selectors {
-					if impl.MatchesSelector(entity, selector.String) {
+					if impl.MatchesSelector(entity.Entity, selector.String) {
 						isEntitySelected = true
 						selector.Used = true
 						//NOTE: don't break from the selectors loop; we want to
@@ -158,7 +153,7 @@ func Main() (exitCode int) {
 		//build a lookup hash for all known entities (for argument parsing)
 		isEntityID := make(map[string]bool, len(entities))
 		for _, entity := range entities {
-			isEntityID[entity.EntityID()] = true
+			isEntityID[entity.Entity.EntityID()] = true
 		}
 
 		//execute command
@@ -177,7 +172,7 @@ func commandHelp(w io.Writer) {
 	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
 }
 
-func commandApply(entities []holo.Entity, options map[int]bool) (exitCode int) {
+func commandApply(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
 	//ensure that we're the only Holo instance
 	if !impl.AcquireLockfile() {
 		return 255
@@ -186,7 +181,7 @@ func commandApply(entities []holo.Entity, options map[int]bool) (exitCode int) {
 
 	withForce := options[optionApplyForce]
 	for _, entity := range entities {
-		impl.HoloApply(nil /*plugin*/, entity, withForce)
+		entity.PluginHandle.Apply(entity.Entity, withForce)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()
@@ -196,28 +191,28 @@ func commandApply(entities []holo.Entity, options map[int]bool) (exitCode int) {
 	return 0
 }
 
-func commandScan(entities []holo.Entity, options map[int]bool) (exitCode int) {
+func commandScan(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
 	isPorcelain := options[optionScanPorcelain]
 	isShort := options[optionScanShort]
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
-			impl.PrintScanReport(entity)
+			impl.PrintScanReport(entity.Entity)
 		case isShort:
-			fmt.Println(entity.EntityID())
+			fmt.Println(entity.Entity.EntityID())
 		default:
-			impl.PrintReport(entity, false)
+			impl.PrintReport(entity.Entity, false)
 		}
 	}
 
 	return 0
 }
 
-func commandDiff(entities []holo.Entity, options map[int]bool) (exitCode int) {
+func commandDiff(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
-		buf, err := impl.RenderDiff(entity.(*externalplugin.Entity).Plugin, entity.EntityID())
+		buf, err := impl.RenderDiff(entity.PluginHandle.Plugin, entity.Entity.EntityID())
 		if err != nil {
-			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
+			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.Entity.EntityID(), err.Error())
 		}
 		os.Stdout.Write(buf)
 

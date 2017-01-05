@@ -96,7 +96,22 @@ func checkVersion(handle *PluginHandle) error {
 	return nil
 }
 
-func HoloApply(handle *PluginHandle, entity holo.Entity, withForce bool) {
+func (handle *PluginHandle) Scan() ([]*EntityHandle, error) {
+	entities, err := handle.Plugin.HoloScan(output.Stderr)
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]*EntityHandle, len(entities))
+	for i := range entities {
+		ret[i] = &EntityHandle{
+			PluginHandle: handle,
+			Entity:       entities[i],
+		}
+	}
+	return ret, nil
+}
+
+func (handle *PluginHandle) Apply(entity holo.Entity, withForce bool) {
 	// track whether the report was already printed
 	tracker := &output.PrologueTracker{Printer: func() { PrintReport(entity, true) }}
 	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}

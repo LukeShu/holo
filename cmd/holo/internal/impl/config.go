@@ -123,7 +123,7 @@ func ReadConfiguration() *Configuration {
 				pluginArg *string
 			)
 			if strings.Contains(pluginSpec, "=") {
-				fields := strings.SplitN(pluginID, "=", 2)
+				fields := strings.SplitN(pluginSpec, "=", 2)
 				pluginID = fields[0]
 				pluginArg = &fields[1]
 			} else {
