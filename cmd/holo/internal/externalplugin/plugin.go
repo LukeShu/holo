@@ -18,10 +18,12 @@
 *
 *******************************************************************************/
 
+// Package externalplugin provides an implementation of holo.Plugin
+// for plugins implemented in external programs via the
+// holo-plugin-interface(7).
 package externalplugin
 
 import (
-	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,27 +35,23 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-// ErrPluginExecutableMissing indicates that a plugin's executable
-// file is missing.
-var ErrPluginExecutableMissing = errors.New("ErrPluginExecutableMissing")
-
 // Plugin describes a plugin executable adhering to the
 // holo-plugin-interface(7).
 type Plugin struct {
 	id             string
 	executablePath string
-	Runtime        holo.Runtime
+	runtime        holo.Runtime
 }
 
 var _ holo.Plugin = &Plugin{}
 
 // NewExternalPlugin creates a new Plugin that is implemented in a
 // separate executable.
-func NewExternalPlugin(id string, executablePath string, runtime holo.Runtime) (*Plugin, error) {
+func NewExternalPlugin(id string, executablePath string, runtime holo.Runtime) (holo.Plugin, error) {
 	p := &Plugin{
 		id:             id,
 		executablePath: executablePath,
-		Runtime:        runtime,
+		runtime:        runtime,
 	}
 
 	// check if the plugin executable exists
@@ -70,7 +68,7 @@ func NewExternalPlugin(id string, executablePath string, runtime holo.Runtime) (
 // output and error channels.  For commands that use file descriptor 3
 // as an extra output channel, the `msg` file can be given (nil is
 // acceptable too).
-func (p *Plugin) Command(args []string, fd1 io.Writer, fd2 io.Writer, fd3 *os.File) *exec.Cmd {
+func (p *Plugin) command(args []string, fd1 io.Writer, fd2 io.Writer, fd3 *os.File) *exec.Cmd {
 	cmd := exec.Command(p.executablePath, args...)
 	cmd.Stdin = nil
 	cmd.Stdout = fd1
@@ -84,11 +82,11 @@ func (p *Plugin) Command(args []string, fd1 io.Writer, fd2 io.Writer, fd3 *os.Fi
 
 	//setup environment
 	env := os.Environ()
-	env = append(env, "HOLO_API_VERSION="+strconv.Itoa(p.Runtime.APIVersion))
-	env = append(env, "HOLO_CACHE_DIR="+filepath.Clean(p.Runtime.CacheDirPath))
-	env = append(env, "HOLO_RESOURCE_DIR="+filepath.Clean(p.Runtime.ResourceDirPath))
-	env = append(env, "HOLO_STATE_DIR="+filepath.Clean(p.Runtime.StateDirPath))
-	env = append(env, "HOLO_ROOT_DIR="+filepath.Clean(p.Runtime.RootDirPath))
+	env = append(env, "HOLO_API_VERSION="+strconv.Itoa(p.runtime.APIVersion))
+	env = append(env, "HOLO_CACHE_DIR="+filepath.Clean(p.runtime.CacheDirPath))
+	env = append(env, "HOLO_RESOURCE_DIR="+filepath.Clean(p.runtime.ResourceDirPath))
+	env = append(env, "HOLO_STATE_DIR="+filepath.Clean(p.runtime.StateDirPath))
+	env = append(env, "HOLO_ROOT_DIR="+filepath.Clean(p.runtime.RootDirPath))
 	cmd.Env = env
 
 	return cmd
@@ -99,13 +97,13 @@ func (p *Plugin) Command(args []string, fd1 io.Writer, fd2 io.Writer, fd3 *os.Fi
 // commands to report structured messages to Holo.
 //
 // Returns the data written to fd3.
-func (p *Plugin) RunCommandWithFD3(args []string, stdout, stderr io.Writer) (string, error) {
+func (p *Plugin) runCommandWithFD3(args []string, stdout, stderr io.Writer) (string, error) {
 	pipeReader, pipeWriter, err := os.Pipe()
 	if err != nil {
 		return "", err
 	}
 
-	cmd := p.Command(args, stdout, stderr, pipeWriter)
+	cmd := p.command(args, stdout, stderr, pipeWriter)
 
 	// cannot use Run() since we need to read from the pipe before the plugin exits
 	err = cmd.Start()

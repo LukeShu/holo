@@ -18,6 +18,7 @@
 *
 *******************************************************************************/
 
+// Package colorize uses ANSI escape codes to colorize text.
 package colorize
 
 import (

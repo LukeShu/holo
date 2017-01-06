@@ -18,6 +18,7 @@
 *
 *******************************************************************************/
 
+// Package filesplugin provides a holo.Plugin to provision files.
 package filesplugin
 
 import (

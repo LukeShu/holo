@@ -18,6 +18,7 @@
 *
 *******************************************************************************/
 
+// Command holo is the user interface to Holo.
 package entrypoint
 
 import (
@@ -37,14 +38,6 @@ const (
 	optionScanShort
 	optionScanPorcelain
 )
-
-//Selector represents a command-line argument that selects entities. The Used
-//field tracks whether entities match this selector (to report unrecognized
-//selectors).
-type Selector struct {
-	String string
-	Used   bool
-}
 
 // Main is the main entry point, but returns the exit code rather than
 // calling os.Exit().  This distinction is useful for monobinary and
@@ -90,70 +83,40 @@ func Main() (exitCode int) {
 			return 255
 		}
 
-		//parse command line
-		options := make(map[int]bool)
-		selectors := make([]*Selector, 0, len(os.Args)-2)
-
+		// parse command line -- classify each argument as either a
+		// selector-string or an option-flag.
 		args := os.Args[2:]
+		options := make(map[int]bool)
+		selectors := make(map[string]bool)
 		for _, arg := range args {
-			//either it's a known option for this subcommand...
+			// either it's a known option for this subcommand...
 			if value, ok := knownOpts[arg]; ok {
 				options[value] = true
-				continue
+			} else { // ...or it must be a selector
+				selectors[arg] = false
 			}
-			//...or it must be a selector
-			selectors = append(selectors, &Selector{String: arg, Used: false})
 		}
 
-		//ask all plugins to scan for entities
-		var entities []*impl.EntityHandle
-		for _, plugin := range config.Plugins {
-			pluginEntities, err := plugin.Scan()
-			if err != nil {
-				output.Errorf(output.Stderr, "%s", err.Error())
-				return 255
-			}
-			entities = append(entities, pluginEntities...)
-			output.Stdout.EndParagraph()
+		// ask all plugins to scan for entities
+		entities, err := impl.GetAllEntities(config.Plugins)
+		if err != nil {
+			output.Errorf(output.Stderr, "%s", err.Error())
+			return 255
 		}
-
-		//if there are selectors, check which entities have been selected by them
 		if len(selectors) > 0 {
-			selectedEntities := make([]*impl.EntityHandle, 0, len(entities))
-			for _, entity := range entities {
-				isEntitySelected := false
-				for _, selector := range selectors {
-					if entity.MatchesSelector(selector.String) {
-						isEntitySelected = true
-						selector.Used = true
-						//NOTE: don't break from the selectors loop; we want to
-						//look at every selector because this loop also verifies
-						//that selectors are valid
-					}
-				}
-				if isEntitySelected {
-					selectedEntities = append(selectedEntities, entity)
-				}
-			}
-			entities = selectedEntities
+			entities = impl.FilterEntities(entities, selectors)
 		}
 
-		//were there unrecognized selectors?
+		// Were there unrecognized selectors?
 		hasUnrecognizedArgs := false
-		for _, selector := range selectors {
-			if !selector.Used {
-				fmt.Fprintf(os.Stderr, "Unrecognized argument: %s\n", selector.String)
+		for selector, recognized := range selectors {
+			if !recognized {
+				fmt.Fprintf(os.Stderr, "Unrecognized argument: %s\n", selector)
 				hasUnrecognizedArgs = true
 			}
 		}
 		if hasUnrecognizedArgs {
 			return 255
-		}
-
-		//build a lookup hash for all known entities (for argument parsing)
-		isEntityID := make(map[string]bool, len(entities))
-		for _, entity := range entities {
-			isEntityID[entity.Entity.EntityID()] = true
 		}
 
 		//execute command

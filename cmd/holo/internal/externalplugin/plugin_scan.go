@@ -52,12 +52,9 @@ func scanParseAction(action string) (verb, reason string) {
 	}
 }
 
-// Scan discovers entities available for the given entity. Errors are
-// reported immediately and will result in nil being returned. "No
-// entities found" will be reported as a non-nil empty slice.
 func (p *Plugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	var stdout bytes.Buffer
-	err := p.Command([]string{"scan"}, &stdout, stderr, nil).Run()
+	err := p.command([]string{"scan"}, &stdout, stderr, nil).Run()
 	if err != nil {
 		return nil, fmt.Errorf("scan with plugin %s failed: %s", p.id, err.Error())
 	}
@@ -86,7 +83,7 @@ func (p *Plugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		switch key {
 		case "ENTITY":
 			// starting new entity
-			currentEntity = &Entity{Plugin: p, id: value, actionVerb: "Working on"}
+			currentEntity = &Entity{id: value, actionVerb: "Working on"}
 			result = append(result, currentEntity)
 		case "SOURCE":
 			currentEntity.sourceFiles = append(currentEntity.sourceFiles, value)

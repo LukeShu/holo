@@ -33,9 +33,8 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-//Entity represents an entity known to some Holo plugin.
+// Entity is merely this package's implementation of holo.Entity.
 type Entity struct {
-	Plugin       *Plugin
 	id           string
 	actionVerb   string
 	actionReason string
