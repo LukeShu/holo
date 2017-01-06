@@ -18,16 +18,15 @@
 *
 *******************************************************************************/
 
-package main
+package impl
 
 import (
-	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
 )
 
 // Ask all plugins to scan for entities
-func GetAllEntities(plugins []*impl.PluginHandle) ([]*impl.EntityHandle, error) {
-	var allEntities []*impl.EntityHandle
+func GetAllEntities(plugins []*PluginHandle) ([]*EntityHandle, error) {
+	var allEntities []*EntityHandle
 	for _, plugin := range plugins {
 		entities, err := plugin.Scan()
 		if err != nil {
@@ -46,10 +45,10 @@ func GetAllEntities(plugins []*impl.PluginHandle) ([]*impl.EntityHandle, error) 
 // The set of selectors is passed in as a map of selector-string =>
 // bool.  If a selector is used, the value for that selector in the
 // map is set to true.
-func FilterEntities(allEntities []*impl.EntityHandle, selectors map[string]bool) []*impl.EntityHandle {
+func FilterEntities(allEntities []*EntityHandle, selectors map[string]bool) []*EntityHandle {
 	// Now for an M*N algorithm!  Go through all selectors and
 	// entities to find which are matched.
-	selectedEntities := make([]*impl.EntityHandle, 0, len(allEntities))
+	selectedEntities := make([]*EntityHandle, 0, len(allEntities))
 	for _, entity := range allEntities {
 		isEntitySelected := false
 		for selector, _ := range selectors {

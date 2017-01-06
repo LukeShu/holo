@@ -87,13 +87,13 @@ func main() {
 	}
 
 	// ask all plugins to scan for entities
-	entities, err := GetAllEntities(config.Plugins)
+	entities, err := impl.GetAllEntities(config.Plugins)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
 		Exit(255)
 	}
 	if len(selectors) > 0 {
-		entities = FilterEntities(entities, selectors)
+		entities = impl.FilterEntities(entities, selectors)
 	}
 
 	// Were there unrecognized selectors?
