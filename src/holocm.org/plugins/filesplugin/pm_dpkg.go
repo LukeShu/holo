@@ -20,6 +20,10 @@
 
 package filesplugin
 
+import (
+	"holocm.org/plugins/filesplugin/fileutil"
+)
+
 // pmDPKG provides the PackageManager for dpkg-based distributions
 // (Debian and derivatives).
 type pmDPKG struct{}
@@ -31,19 +35,19 @@ func (p pmDPKG) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPa
 	//if "${target}.dpkg-old" exists, move it back to $target and move the
 	//updated target base to "${target}.dpkg-dist" so that the usual application
 	//logic can continue
-	if IsManageableFile(dpkgOldPath) {
-		err := MoveFile(targetPath, dpkgDistPath)
+	if fileutil.IsManageableFile(dpkgOldPath) {
+		err := fileutil.MoveFile(targetPath, dpkgDistPath)
 		if err != nil {
 			return "", "", err
 		}
-		err = MoveFile(dpkgOldPath, targetPath)
+		err = fileutil.MoveFile(dpkgOldPath, targetPath)
 		if err != nil {
 			return "", "", err
 		}
 		return dpkgDistPath, targetPath + " (with .dpkg-old)", nil
 	}
 
-	if IsManageableFile(dpkgDistPath) {
+	if fileutil.IsManageableFile(dpkgDistPath) {
 		return dpkgDistPath, dpkgDistPath, nil
 	}
 	return "", "", nil

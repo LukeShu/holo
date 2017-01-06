@@ -20,13 +20,17 @@
 
 package filesplugin
 
+import (
+	"holocm.org/plugins/filesplugin/fileutil"
+)
+
 // pmPacman provides the PackageManager for pacman/libalpm-base
 // distributions (Arch Linux and derivatives).
 type pmPacman struct{}
 
 func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
 	pacnewPath := targetPath + ".pacnew"
-	if IsManageableFile(pacnewPath) {
+	if fileutil.IsManageableFile(pacnewPath) {
 		return pacnewPath, pacnewPath, nil
 	}
 	return "", "", nil
@@ -34,7 +38,7 @@ func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reported
 
 func (p pmPacman) AdditionalCleanupTargets(targetPath string) []string {
 	pacsavePath := targetPath + ".pacsave"
-	if IsManageableFile(pacsavePath) {
+	if fileutil.IsManageableFile(pacsavePath) {
 		return []string{pacsavePath}
 	}
 	return nil

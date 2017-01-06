@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"holocm.org/plugins/filesplugin/fileutil"
 )
 
 // ScanRepo returns a slice of all the FilesEntity entities.
@@ -38,7 +40,7 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !IsManageableFileInfo(repoFileInfo) {
+		if !fileutil.IsManageableFileInfo(repoFileInfo) {
 			return nil
 		}
 		//don't consider repoDir itself to be a repo entry (it might be a symlink)
@@ -70,7 +72,7 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !IsManageableFileInfo(targetBaseFileInfo) {
+		if !fileutil.IsManageableFileInfo(targetBaseFileInfo) {
 			return nil
 		}
 		//don't consider targetBaseDir itself to be a target base (it might be a symlink)

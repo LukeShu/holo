@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package filesplugin
+package fileutil
 
 import (
 	"io/ioutil"

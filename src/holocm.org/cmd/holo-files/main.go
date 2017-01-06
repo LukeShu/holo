@@ -18,6 +18,7 @@
 *
 *******************************************************************************/
 
+// Command holo-files provides a separate executable of filesplugin.
 package main
 
 import (

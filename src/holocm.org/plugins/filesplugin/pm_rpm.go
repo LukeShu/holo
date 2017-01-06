@@ -20,6 +20,10 @@
 
 package filesplugin
 
+import (
+	"holocm.org/plugins/filesplugin/fileutil"
+)
+
 // pmRPM provides the PackageManager for RPM-based distributions.
 type pmRPM struct{}
 
@@ -30,19 +34,19 @@ func (p pmRPM) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPat
 	//if "${target}.rpmsave" exists, move it back to $target and move the
 	//updated target base to "${target}.rpmnew" so that the usual application
 	//logic can continue
-	if IsManageableFile(rpmsavePath) {
-		err := MoveFile(targetPath, rpmnewPath)
+	if fileutil.IsManageableFile(rpmsavePath) {
+		err := fileutil.MoveFile(targetPath, rpmnewPath)
 		if err != nil {
 			return "", "", err
 		}
-		err = MoveFile(rpmsavePath, targetPath)
+		err = fileutil.MoveFile(rpmsavePath, targetPath)
 		if err != nil {
 			return "", "", err
 		}
 		return rpmnewPath, targetPath + " (with .rpmsave)", nil
 	}
 
-	if IsManageableFile(rpmnewPath) {
+	if fileutil.IsManageableFile(rpmnewPath) {
 		return rpmnewPath, rpmnewPath, nil
 	}
 	return "", "", nil

@@ -24,8 +24,8 @@ import (
 	"io"
 )
 
-//PrologueTracker is used in conjunction with PrologueWriter. See explanation
-//over there.
+// PrologueTracker is used in conjunction with PrologueWriter. See
+// explanation over there.
 type PrologueTracker struct {
 	Printer func()
 }
@@ -39,14 +39,16 @@ func (t *PrologueTracker) Exec() {
 	}
 }
 
-//PrologueWriter is an io.Writer that ensures that a prologue is printed before
-//any writes to the underlying io.Writer occur. This is used by entity.Apply()
-//to print the scan report before any other output, but only if there is output.
+// PrologueWriter is an io.Writer that ensures that a prologue is
+// printed before any writes to the underlying io.Writer occur.  This
+// is used by entity.Apply() to print the scan report before any other
+// output, but only if there is output.
 //
-//Since, in this usecase, both stdout and stderr need to be PrologueWriter
-//instances, the function that prints the prologue must be shared by both, and
-//it needs to be made sure that the prologue is only printed once. Thus the
-//prologue is tracked with a PrologueTracker instance.
+// Since, in this usecase, both stdout and stderr need to be
+// PrologueWriter instances, the function that prints the prologue
+// must be shared by both, and it needs to be made sure that the
+// prologue is only printed once.  Thus the prologue is tracked with a
+// PrologueTracker instance.
 type PrologueWriter struct {
 	Writer  io.Writer
 	Tracker *PrologueTracker

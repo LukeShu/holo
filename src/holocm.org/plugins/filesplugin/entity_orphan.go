@@ -24,6 +24,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"holocm.org/plugins/filesplugin/fileutil"
 )
 
 // scanOrphanedTargetBase locates a target file for a given orphaned
@@ -32,7 +34,7 @@ import (
 // apply`.
 func (target *FilesEntity) scanOrphanedTargetBase() (theTargetPath, strategy, assessment string) {
 	targetPath := target.PathIn(target.plugin.targetDirectory())
-	if IsManageableFile(targetPath) {
+	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
 	return targetPath, "delete", "target was deleted"
@@ -73,7 +75,7 @@ func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []
 		}
 
 		//now really restore the target base
-		appendError(CopyFile(targetBasePath, targetPath))
+		appendError(fileutil.CopyFile(targetBasePath, targetPath))
 	}
 
 	//target is not managed by Holo anymore, so delete the provisioned target and the target base

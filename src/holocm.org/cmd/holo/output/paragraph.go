@@ -24,20 +24,22 @@ import (
 	"io"
 )
 
-//ParagraphTracker is used in conjunction with ParagraphWriter. See explanation
-//over there.
+// ParagraphTracker is used in conjunction with ParagraphWriter. See
+// explanation over there.
 type ParagraphTracker struct {
 	PrimaryWriter        io.Writer
 	hadOutput            bool
 	trailingNewlineCount int
 }
 
-//ParagraphWriter is an io.Writer that forwards to another io.Writer, but
-//ensures that input is written in paragraphs, with newlines in between.
+// ParagraphWriter is an io.Writer that forwards to another io.Writer,
+// but ensures that input is written in paragraphs, with newlines in
+// between.
 //
-//Since, in this usecase, both stdout and stderr need to be PrologueWriter
-//instances, the logic that prints the additional newlines must be shared by
-//both. Thus the newlines are tracked with a ParagraphTracker instance.
+// Since, in this usecase, both stdout and stderr need to be
+// ParagraphWriter instances, the logic that prints the additional
+// newlines must be shared by both.  Thus the newlines are tracked
+// with a ParagraphTracker instance.
 type ParagraphWriter struct {
 	Writer  io.Writer
 	Tracker *ParagraphTracker

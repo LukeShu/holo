@@ -57,8 +57,9 @@ func RootDirectory() string {
 	return rootDir
 }
 
-func RemoveRuntimeCache() {
-	_ = os.RemoveAll(cacheDir) //fail silently
+func Exit(code int) {
+	_ = os.RemoveAll(cacheDir) // fail silently
+	os.Exit(code)
 }
 
 func NewRuntime(id string) holo.Runtime {

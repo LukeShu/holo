@@ -25,9 +25,11 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+
+	"holocm.org/plugins/filesplugin/fileutil"
 )
 
-func (repoFile RepoFile) ApplyTo(in *FileBuffer, stdout, stderr io.Writer) (out *FileBuffer, err error) {
+func (repoFile RepoFile) ApplyTo(in *fileutil.FileBuffer, stdout, stderr io.Writer) (out *fileutil.FileBuffer, err error) {
 	if repoFile.ApplicationStrategy() == "passthru" {
 		// script //////////////////////////////////////////////
 
@@ -51,13 +53,13 @@ func (repoFile RepoFile) ApplyTo(in *FileBuffer, stdout, stderr io.Writer) (out 
 		}
 
 		// result is the stdout of the script
-		return NewFileBufferFromContents(stdout.Bytes(), in.BasePath), nil
+		return fileutil.NewFileBufferFromContents(stdout.Bytes(), in.BasePath), nil
 	} else {
 		// file ////////////////////////////////////////////////
 
 		// if the repo contains a plain file (or symlink), the file
 		// buffer is replaced by it, thus ignoring the target base (or
 		// any previous application steps)
-		return NewFileBuffer(repoFile.Path(), in.BasePath)
+		return fileutil.NewFileBuffer(repoFile.Path(), in.BasePath)
 	}
 }

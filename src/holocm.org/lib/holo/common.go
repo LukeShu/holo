@@ -1,3 +1,25 @@
+/*******************************************************************************
+*
+* Copyright 2015 Stefan Majewsky <majewsky@gmx.net>
+* Copyright 2017 Luke Shumaker <lukeshu@parabola.nu>
+*
+* This file is part of Holo.
+*
+* Holo is free software: you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation, either version 3 of the License, or (at your option) any later
+* version.
+*
+* Holo is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* Holo. If not, see <http://www.gnu.org/licenses/>.
+*
+*******************************************************************************/
+
+// Package holo provides an interface for plugins.
 package holo
 
 import (
@@ -33,6 +55,9 @@ type Plugin interface {
 
 	// Scan Runtime.ResourceDirPath and return a list of entities
 	// that this plugin can provision.
+	//
+	// Errors are reported immediately and will result in a nil
+	// slice being returned.
 	HoloScan(stderr io.Writer) ([]Entity, error)
 
 	// Provision entityID

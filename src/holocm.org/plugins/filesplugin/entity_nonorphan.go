@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 
 	"holocm.org/lib/holo"
+	"holocm.org/plugins/filesplugin/fileutil"
 )
 
 // Apply performs the complete application algorithm for the given
@@ -49,9 +50,9 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	// - option 2: the target file was deleted, but we have a
 	//   target base that we can start from
 	needForcefulReprovision := false
-	targetExists := IsManageableFile(targetPath)
+	targetExists := fileutil.IsManageableFile(targetPath)
 	if !targetExists {
-		if !IsManageableFile(targetBasePath) {
+		if !fileutil.IsManageableFile(targetBasePath) {
 			return nil, errors.New("skipping target: not a manageable file")
 		}
 		if withForce {
@@ -63,14 +64,14 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 
 	//step 2: if we don't have a target base yet, the file at targetPath *is*
 	//the targetBase which we have to copy now
-	if !IsManageableFile(targetBasePath) {
+	if !fileutil.IsManageableFile(targetBasePath) {
 		targetBaseDir := filepath.Dir(targetBasePath)
 		err := os.MkdirAll(targetBaseDir, 0755)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error())
 		}
 
-		err = CopyFile(targetPath, targetBasePath)
+		err = fileutil.CopyFile(targetPath, targetBasePath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot copy %s to %s: %s", targetPath, targetBasePath, err.Error())
 		}
@@ -85,7 +86,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	if updatedTBPath != "" {
 		//an updated stock configuration is available at updatedTBPath
 		fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
-		err := CopyFile(updatedTBPath, targetBasePath)
+		err := fileutil.CopyFile(updatedTBPath, targetBasePath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
 		}
@@ -98,10 +99,10 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	//overridden by the --force option)
 
 	//load the last provisioned version
-	var lastProvisionedBuffer *FileBuffer
+	var lastProvisionedBuffer *fileutil.FileBuffer
 	lastProvisionedPath := target.PathIn(target.plugin.provisionedDirectory())
-	if IsManageableFile(lastProvisionedPath) {
-		lastProvisionedBuffer, err = NewFileBuffer(lastProvisionedPath, targetPath)
+	if fileutil.IsManageableFile(lastProvisionedPath) {
+		lastProvisionedBuffer, err = fileutil.NewFileBuffer(lastProvisionedPath, targetPath)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +111,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	//compare it against the target version (which must exist at this point
 	//unless we are using --force)
 	if targetExists && lastProvisionedBuffer != nil {
-		targetBuffer, err := NewFileBuffer(targetPath, targetPath)
+		targetBuffer, err := fileutil.NewFileBuffer(targetPath, targetPath)
 		if err != nil {
 			return nil, err
 		}
@@ -136,14 +137,14 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 
 	//load the target base into a buffer as the start for the application
 	//algorithm, unless it will be discarded by an application step
-	var buffer *FileBuffer
+	var buffer *fileutil.FileBuffer
 	if firstStep == -1 {
-		buffer, err = NewFileBuffer(targetBasePath, targetPath)
+		buffer, err = fileutil.NewFileBuffer(targetBasePath, targetPath)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		buffer = NewFileBufferFromContents([]byte(nil), targetPath)
+		buffer = fileutil.NewFileBufferFromContents([]byte(nil), targetPath)
 	}
 
 	//apply all the applicable repo files in order (starting from the first one
@@ -177,7 +178,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyFilePermissions(targetBasePath, lastProvisionedPath)
+	err = fileutil.ApplyFilePermissions(targetBasePath, lastProvisionedPath)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	if err != nil {
 		return nil, err
 	}
-	err = ApplyFilePermissions(targetBasePath, newTargetPath)
+	err = fileutil.ApplyFilePermissions(targetBasePath, newTargetPath)
 	if err != nil {
 		return nil, err
 	}
