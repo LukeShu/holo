@@ -22,9 +22,9 @@ package main
 
 import (
 	"holocm.org/lib/holoplugin"
-	"holocm.org/plugins/files"
+	"holocm.org/plugins/filesplugin"
 )
 
 func main() {
-	holoplugin.Main(files.NewFilesPlugin)
+	holoplugin.Main(filesplugin.NewFilesPlugin)
 }

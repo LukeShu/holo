@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package external
+package externalplugin
 
 import (
 	"bytes"

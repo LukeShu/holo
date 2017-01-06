@@ -18,24 +18,24 @@
 *
 *******************************************************************************/
 
-package files
+package filesplugin
 
-//TargetDirectory is $HOLO_ROOT_DIR (or "/" if not set).
-func (p FilesPlugin) targetDirectory() string {
-	return p.Runtime.RootDirPath
+// pmPacman provides the PackageManager for pacman/libalpm-base
+// distributions (Arch Linux and derivatives).
+type pmPacman struct{}
+
+func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+	pacnewPath := targetPath + ".pacnew"
+	if IsManageableFile(pacnewPath) {
+		return pacnewPath, pacnewPath, nil
+	}
+	return "", "", nil
 }
 
-//ResourceDirectory is $HOLO_RESOURCE_DIR.
-func (p FilesPlugin) resourceDirectory() string {
-	return p.Runtime.ResourceDirPath
-}
-
-//TargetBaseDirectory is $HOLO_STATE_DIR/base.
-func (p FilesPlugin) targetBaseDirectory() string {
-	return p.Runtime.StateDirPath + "/base"
-}
-
-//ProvisionedDirectory is $HOLO_STATE_DIR/provisioned.
-func (p FilesPlugin) provisionedDirectory() string {
-	return p.Runtime.StateDirPath + "/provisioned"
+func (p pmPacman) AdditionalCleanupTargets(targetPath string) []string {
+	pacsavePath := targetPath + ".pacsave"
+	if IsManageableFile(pacsavePath) {
+		return []string{pacsavePath}
+	}
+	return nil
 }

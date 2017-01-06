@@ -18,24 +18,30 @@
 *
 *******************************************************************************/
 
-package files
+package externalplugin
 
-// pmPacman provides the PackageManager for pacman/libalpm-base
-// distributions (Arch Linux and derivatives).
-type pmPacman struct{}
+import (
+	"holocm.org/lib/holo"
+)
 
-func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
-	pacnewPath := targetPath + ".pacnew"
-	if IsManageableFile(pacnewPath) {
-		return pacnewPath, pacnewPath, nil
-	}
-	return "", "", nil
+//Entity represents an entity known to some Holo plugin.
+type Entity struct {
+	Plugin       *Plugin
+	id           string
+	actionVerb   string
+	actionReason string
+	sourceFiles  []string
+	infoLines    []holo.KV
 }
 
-func (p pmPacman) AdditionalCleanupTargets(targetPath string) []string {
-	pacsavePath := targetPath + ".pacsave"
-	if IsManageableFile(pacsavePath) {
-		return []string{pacsavePath}
-	}
-	return nil
+var _ holo.Entity = &Entity{}
+
+func (e *Entity) EntityID() string { return e.id }
+
+func (e *Entity) EntitySource() []string { return e.sourceFiles }
+
+func (e *Entity) EntityUserInfo() []holo.KV { return e.infoLines }
+
+func (e *Entity) EntityAction() (string, string) {
+	return e.actionVerb, e.actionReason
 }

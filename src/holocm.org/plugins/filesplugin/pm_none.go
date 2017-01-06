@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package files
+package filesplugin
 
 // pmNone provides the PackageManager for unrecognized operating
 // systems or generic unit tests.

@@ -18,21 +18,22 @@
 *
 *******************************************************************************/
 
-package color
+package colorize
 
 import (
 	"bytes"
 	"io"
 )
 
-//LineColorizingRule is a rule for the LineColorizingWriter (see there).
+// LineColorizingRule is a rule for the LineColorizingWriter (see
+// there).
 type LineColorizingRule struct {
 	Prefix []byte
 	Color  []byte
 }
 
-//ColorizeLine adds color to the given line according to the first of the given
-//`rules` that matches.
+// ColorizeLine adds color to the given line according to the first of
+// the given `rules` that matches.
 func ColorizeLine(line []byte, rules []LineColorizingRule) []byte {
 	for _, rule := range rules {
 		if bytes.HasPrefix(line, rule.Prefix) {
@@ -42,7 +43,7 @@ func ColorizeLine(line []byte, rules []LineColorizingRule) []byte {
 	return line
 }
 
-//ColorizeLines is like ColorizeLine, but acts on multiple lines.
+// ColorizeLines is like ColorizeLine, but acts on multiple lines.
 func ColorizeLines(lines []byte, rules []LineColorizingRule) []byte {
 	sep := []byte{'\n'}
 	in := bytes.Split(lines, sep)
@@ -53,10 +54,10 @@ func ColorizeLines(lines []byte, rules []LineColorizingRule) []byte {
 	return bytes.Join(out, sep)
 }
 
-//LineColorizingWriter is an io.Writer that adds ANSI colors to lines of text
-//written into it. It then passes the colorized lines to another writer.
-//Coloring is based on prefixes. For example, to turn all lines with a "!!"
-//prefix red, use
+// LineColorizingWriter is an io.Writer that adds ANSI colors to lines
+// of text written into it. It then passes the colorized lines to
+// another writer.  Coloring is based on prefixes. For example, to
+// turn all lines with a "!!"  prefix red, use
 //
 //    colorizer = &LineColorizingWriter {
 //        Writer: otherWriter,
@@ -71,24 +72,24 @@ type LineColorizingWriter struct {
 	buffer []byte
 }
 
-//Write implements the io.Writer interface.
+// Write implements the io.Writer interface.
 func (w *LineColorizingWriter) Write(p []byte) (n int, err error) {
-	//append `p` to buffer and report everything as written
+	// append `p` to buffer and report everything as written
 	w.buffer = append(w.buffer, p...)
 	n = len(p)
 
 	for {
-		//check if we have a full line in the buffer
+		// check if we have a full line in the buffer
 		idx := bytes.IndexByte(w.buffer, '\n')
 		if idx == -1 {
 			return n, nil
 		}
 
-		//extract line from buffer
+		// extract line from buffer
 		line := append(ColorizeLine(w.buffer[0:idx], w.Rules), '\n')
 		w.buffer = w.buffer[idx+1:]
 
-		//check if a colorizing rule matches
+		// check if a colorizing rule matches
 		_, err := w.Writer.Write(line)
 		if err != nil {
 			return n, err

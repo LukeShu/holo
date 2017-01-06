@@ -28,10 +28,10 @@ import (
 	"sort"
 	"strings"
 
-	"holocm.org/cmd/holo/external"
 	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
+	"holocm.org/plugins/externalplugin"
 )
 
 func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
@@ -39,7 +39,7 @@ func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error
 		_arg := filepath.Join(RootDirectory(), "usr/lib/holo/holo-"+id)
 		arg = &_arg
 	}
-	plugin, err := external.NewExternalPlugin(id, *arg, runtime)
+	plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
 	if err != nil {
 		return nil, err
 	}

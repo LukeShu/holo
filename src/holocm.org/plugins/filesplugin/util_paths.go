@@ -18,30 +18,24 @@
 *
 *******************************************************************************/
 
-package external
+package filesplugin
 
-import (
-	"holocm.org/lib/holo"
-)
-
-//Entity represents an entity known to some Holo plugin.
-type Entity struct {
-	Plugin       *Plugin
-	id           string
-	actionVerb   string
-	actionReason string
-	sourceFiles  []string
-	infoLines    []holo.KV
+//TargetDirectory is $HOLO_ROOT_DIR (or "/" if not set).
+func (p FilesPlugin) targetDirectory() string {
+	return p.Runtime.RootDirPath
 }
 
-var _ holo.Entity = &Entity{}
+//ResourceDirectory is $HOLO_RESOURCE_DIR.
+func (p FilesPlugin) resourceDirectory() string {
+	return p.Runtime.ResourceDirPath
+}
 
-func (e *Entity) EntityID() string { return e.id }
+//TargetBaseDirectory is $HOLO_STATE_DIR/base.
+func (p FilesPlugin) targetBaseDirectory() string {
+	return p.Runtime.StateDirPath + "/base"
+}
 
-func (e *Entity) EntitySource() []string { return e.sourceFiles }
-
-func (e *Entity) EntityUserInfo() []holo.KV { return e.infoLines }
-
-func (e *Entity) EntityAction() (string, string) {
-	return e.actionVerb, e.actionReason
+//ProvisionedDirectory is $HOLO_STATE_DIR/provisioned.
+func (p FilesPlugin) provisionedDirectory() string {
+	return p.Runtime.StateDirPath + "/provisioned"
 }
