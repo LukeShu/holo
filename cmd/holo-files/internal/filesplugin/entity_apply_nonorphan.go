@@ -232,7 +232,7 @@ func (entity *FilesEntity) GetDesired(base fileutil.FileBuffer, stdout, stderr i
 	// apply all the applicable resources in order
 	var err error
 	for _, resource := range resources {
-		buffer, err = resource.ApplyTo(buffer)
+		buffer, err = resource.ApplyTo(buffer, stdout, stderr)
 		if err != nil {
 			return fileutil.FileBuffer{}, err
 		}

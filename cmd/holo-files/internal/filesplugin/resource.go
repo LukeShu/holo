@@ -22,6 +22,7 @@
 package filesplugin
 
 import (
+	"io"
 	"path/filepath"
 	"strings"
 
@@ -54,29 +55,31 @@ type Resource interface {
 
 	// ApplyTo applies this Resource to a file buffer, as part of
 	// the `holo apply` algorithm.
-	ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error)
+	ApplyTo(entityBuffer fileutil.FileBuffer, stdout, stderr io.Writer) (fileutil.FileBuffer, error)
 }
 
 type rawResource struct {
 	path          string
 	disambiguator string
 	entityPath    string
+	plugin        FilesPlugin
 }
 
 func (resource rawResource) Path() string          { return resource.path }
 func (resource rawResource) Disambiguator() string { return resource.disambiguator }
 func (resource rawResource) EntityPath() string    { return resource.entityPath }
 
-//NewResource creates a Resource instance when its path in the file system is
-//known.
+// NewResource creates a Resource instance when its path in the file
+// system is known.
 func (p FilesPlugin) NewResource(path string) Resource {
-	relPath, _ := filepath.Rel(p.resourceDirectory(), path)
+	relPath, _ := filepath.Rel(p.Runtime.ResourceDirPath, path)
 	segments := strings.SplitN(relPath, string(filepath.Separator), 2)
 	ext := filepath.Ext(segments[1])
 	raw := rawResource{
 		path:          path,
 		disambiguator: segments[0],
 		entityPath:    strings.TrimSuffix(segments[1], ext),
+		plugin:        p,
 	}
 	switch ext {
 	case ".holoscript":

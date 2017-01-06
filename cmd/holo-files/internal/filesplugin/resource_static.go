@@ -22,6 +22,7 @@
 package filesplugin
 
 import (
+	"io"
 	"os"
 
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
@@ -38,7 +39,7 @@ func (resource StaticResource) ApplicationStrategy() string { return "apply" }
 func (resource StaticResource) DiscardsPreviousBuffer() bool { return true }
 
 // ApplyTo implements the Resource interface.
-func (resource StaticResource) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error) {
+func (resource StaticResource) ApplyTo(entityBuffer fileutil.FileBuffer, stdout, stderr io.Writer) (fileutil.FileBuffer, error) {
 	resourceBuffer, err := fileutil.NewFileBuffer(resource.Path())
 	if err != nil {
 		return fileutil.FileBuffer{}, err

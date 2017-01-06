@@ -79,7 +79,7 @@ func renderFileDiff(fromPath, toPath string) ([]byte, error) {
 	result = rx.ReplaceAll(result, []byte("+++ "+toPath))
 
 	//colorize diff
-	rules := []color.LineColorizingRule{
+	rules := []colorize.LineColorizingRule{
 		{[]byte("diff "), []byte("\x1B[1m")},
 		{[]byte("new "), []byte("\x1B[1m")},
 		{[]byte("deleted "), []byte("\x1B[1m")},
@@ -90,7 +90,7 @@ func renderFileDiff(fromPath, toPath string) ([]byte, error) {
 		{[]byte("+"), []byte("\x1B[32m")},
 	}
 
-	return color.ColorizeLines(result, rules), nil
+	return colorize.ColorizeLines(result, rules), nil
 }
 
 func checkFile(path string) (pathToUse string, returnError error) {

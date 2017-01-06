@@ -24,6 +24,7 @@ package filesplugin
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -42,27 +43,28 @@ func (resource Holoscript) ApplicationStrategy() string { return "passthru" }
 func (resource Holoscript) DiscardsPreviousBuffer() bool { return false }
 
 // ApplyTo implements the Resource interface.
-func (resource Holoscript) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error) {
-	//application of a holoscript requires file contents
+func (resource Holoscript) ApplyTo(entityBuffer fileutil.FileBuffer, stdout, stderr io.Writer) (fileutil.FileBuffer, error) {
+	// application of a holoscript requires file contents
 	entityBuffer, err := entityBuffer.ResolveSymlink()
 	if err != nil {
 		return fileutil.FileBuffer{}, err
 	}
 
-	//run command, fetch result file into buffer (not into the entity
-	//directly, in order not to corrupt the file there if the script run fails)
-	var stdout bytes.Buffer
+	// run command, fetch result file into out (not into the
+	// entity directly, in order not to corrupt the file there if
+	// the script run fails)
+	var out bytes.Buffer
 	cmd := exec.Command(resource.Path())
 	cmd.Stdin = strings.NewReader(entityBuffer.Contents)
-	cmd.Stdout = &stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = &out
+	cmd.Stderr = stderr
 	err = cmd.Run()
 	if err != nil {
 		return fileutil.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", resource.Path(), err.Error())
 	}
 
-	//result is the stdout of the script
+	// result is the stdout of the script
 	entityBuffer.Mode &^= os.ModeType
-	entityBuffer.Contents = stdout.String()
+	entityBuffer.Contents = out.String()
 	return entityBuffer, nil
 }

@@ -22,6 +22,7 @@ package filesplugin
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -42,7 +43,7 @@ func (resource Patchfile) ApplicationStrategy() string { return "patch" }
 func (resource Patchfile) DiscardsPreviousBuffer() bool { return false }
 
 // ApplyTo implements the Resource interface.
-func (resource Patchfile) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error) {
+func (resource Patchfile) ApplyTo(entityBuffer fileutil.FileBuffer, stdout, stderr io.Writer) (fileutil.FileBuffer, error) {
 	// `patch` requires that the file it's operating on be a real
 	// file (not a pipe).  So, we'll write entityBuffer to a
 	// temporary file, run `patch`, then read it back.
@@ -84,8 +85,8 @@ func (resource Patchfile) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.Fi
 		"-i", patchfile,
 	)
 	cmd.Dir = targetDir
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = stderr
+	cmd.Stderr = stderr
 	err = cmd.Run()
 	if err != nil {
 		return fileutil.FileBuffer{}, fmt.Errorf("execution failed: %s: %s", strings.Join(cmd.Args, " "), err.Error())
