@@ -25,13 +25,12 @@ import (
 	"io"
 	"strings"
 
-	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
 func (p *Plugin) HoloInfo() map[string]string {
 	var stdout bytes.Buffer
-	err := p.Command([]string{"info"}, &stdout, output.Stderr, nil).Run()
+	err := p.Command([]string{"info"}, &stdout, nil, nil).Run()
 	if err != nil {
 		return nil
 	}
@@ -77,7 +76,7 @@ func (p *Plugin) HoloApply(entityID string, withForce bool, stdout, stderr io.Wr
 }
 
 func (p *Plugin) HoloDiff(entityID string, stderr io.Writer) (string, string) {
-	fd3text, err := p.RunCommandWithFD3([]string{"diff", entityID}, output.Stdout, stderr)
+	fd3text, err := p.RunCommandWithFD3([]string{"diff", entityID}, nil, stderr)
 	if err != nil {
 		return "", ""
 	}
