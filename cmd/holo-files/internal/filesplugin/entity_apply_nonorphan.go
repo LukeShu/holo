@@ -24,6 +24,7 @@ package filesplugin
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -35,14 +36,14 @@ import (
 // given FilesEntity.  This includes taking a copy of the base if
 // necessary, applying all resources, and saving the result in the
 // target path with the correct file metadata.
-func (entity *FilesEntity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
+func (entity *FilesEntity) applyNonOrphan(withForce bool, stdout, stderr io.Writer) (holo.ApplyResult, error) {
 	// step 1: check if a system update installed a new version of
 	// the stock configuration
 	//
 	// This has to come first because it might shuffle some files
 	// around, and if we do anything else first, we might end up
 	// stat()ing the wrong file.
-	newBasePath, newBase, err := entity.GetNewBase()
+	newBasePath, newBase, err := entity.GetNewBase(stdout, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,7 @@ func (entity *FilesEntity) applyNonOrphan(withForce bool) (holo.ApplyResult, err
 		// an updated stock configuration is available at
 		// newBase.Path (but show it to the user as
 		// newBasePath)
-		fmt.Printf(">> found updated target base: %s -> %s\n", newBasePath, base.Path)
+		fmt.Fprintf(stdout, ">> found updated target base: %s -> %s\n", newBasePath, base.Path)
 		err := newBase.Write(base.Path)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot copy %s to %s: %v", newBase.Path, base.Path, err)
@@ -126,7 +127,7 @@ func (entity *FilesEntity) applyNonOrphan(withForce bool) (holo.ApplyResult, err
 	// overridden by the --force option)
 
 	// render desired state of entity
-	desired, err := entity.GetDesired(base)
+	desired, err := entity.GetDesired(base, stdout, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -198,8 +199,8 @@ func (entity *FilesEntity) GetCurrent() (fileutil.FileBuffer, error) {
 
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
-func (entity *FilesEntity) GetNewBase() (path string, buf fileutil.FileBuffer, err error) {
-	realPath, path, err := GetPackageManager(entity.plugin.targetDirectory()).FindUpdatedTargetBase(entity.PathIn(entity.plugin.targetDirectory()))
+func (entity *FilesEntity) GetNewBase(stdout, stderr io.Writer) (path string, buf fileutil.FileBuffer, err error) {
+	realPath, path, err := GetPackageManager(entity.plugin.targetDirectory(), stdout, stderr).FindUpdatedTargetBase(entity.PathIn(entity.plugin.targetDirectory()))
 	if err != nil {
 		return
 	}
@@ -211,7 +212,7 @@ func (entity *FilesEntity) GetNewBase() (path string, buf fileutil.FileBuffer, e
 }
 
 //GetDesired applies all the resources for this FilesEntity onto the base.
-func (entity *FilesEntity) GetDesired(base fileutil.FileBuffer) (fileutil.FileBuffer, error) {
+func (entity *FilesEntity) GetDesired(base fileutil.FileBuffer, stdout, stderr io.Writer) (fileutil.FileBuffer, error) {
 	resources := entity.Resources()
 
 	// Optimization: check if we can skip any application steps

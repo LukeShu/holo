@@ -123,7 +123,7 @@ func (entity *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.
 	// https://github.com/holocm/holo/issues/19
 	switch len(entity.resources) {
 	case 0:
-		errs := entity.applyOrphan()
+		errs := entity.applyOrphan(stdout, stderr)
 		if len(errs) > 0 {
 			for _, err := range errs {
 				fmt.Fprintf(stderr, "!! %s\n", err.Error())
@@ -133,7 +133,7 @@ func (entity *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.
 		}
 		return holo.ApplyApplied
 	default:
-		result, err := entity.applyNonOrphan(withForce)
+		result, err := entity.applyNonOrphan(withForce, stdout, stderr)
 
 		if err != nil {
 			fmt.Fprintf(stderr, "!! %s\n", err.Error())

@@ -22,6 +22,7 @@ package filesplugin
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -62,7 +63,7 @@ var pm PackageManager
 
 // GetPackageManager returns the most suitable PackageManager
 // implementation for the current system.
-func GetPackageManager(rootDir string) PackageManager {
+func GetPackageManager(rootDir string, stderr, stdout io.Writer) PackageManager {
 	if pm == nil {
 		//which distribution are we running on?
 		isDist := getOsRelease(rootDir)
@@ -83,9 +84,9 @@ func GetPackageManager(rootDir string) PackageManager {
 				dists = append(dists, dist)
 			}
 			sort.Strings(dists)
-			fmt.Fprintf(os.Stderr, "!! Running on an unrecognized distribution. Distribution IDs: %s\n", strings.Join(dists, ","))
-			fmt.Fprintf(os.Stderr, ">> Please report this error at <https://github.com/holocm/holo/issues/new>\n")
-			fmt.Fprintf(os.Stderr, ">> and include the contents of your /etc/os-release file.\n")
+			fmt.Fprintf(stdout, "!! Running on an unrecognized distribution. Distribution IDs: %s\n", strings.Join(dists, ","))
+			fmt.Fprintf(stdout, ">> Please report this error at <https://github.com/holocm/holo/issues/new>\n")
+			fmt.Fprintf(stdout, ">> and include the contents of your /etc/os-release file.\n")
 
 			pm = pmNone{}
 		}
