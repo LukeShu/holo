@@ -30,21 +30,7 @@ import (
 
 	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
-	"holocm.org/lib/holo"
-	"holocm.org/plugins/externalplugin"
 )
-
-func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
-	if arg == nil {
-		_arg := filepath.Join(RootDirectory(), "usr/lib/holo/holo-"+id)
-		arg = &_arg
-	}
-	plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
-	if err != nil {
-		return nil, err
-	}
-	return plugin, nil
-}
 
 //Configuration contains the parsed contents of /etc/holorc.
 type Configuration struct {
@@ -116,37 +102,13 @@ func ReadConfiguration() *Configuration {
 
 		//collect plugin IDs
 		if strings.HasPrefix(line, "plugin ") {
-			pluginSpec := strings.TrimSpace(strings.TrimPrefix(line, "plugin"))
-
-			var (
-				pluginID  string
-				pluginArg *string
-			)
-			if strings.Contains(pluginSpec, "=") {
-				fields := strings.SplitN(pluginSpec, "=", 2)
-				pluginID = fields[0]
-				pluginArg = &fields[1]
-			} else {
-				pluginID = pluginSpec
+			plugin, err := getPlugin2(strings.TrimSpace(strings.TrimPrefix(line, "plugin")))
+			if err != nil {
+				output.Errorf(output.Stderr, "%s", err.Error())
+				return nil
 			}
-
-			plugin, err := impl.NewPluginHandle(pluginID, pluginArg, NewRuntime(pluginID), GetPlugin)
-
-			if err == nil {
+			if plugin != nil {
 				result.Plugins = append(result.Plugins, plugin)
-			} else {
-				if os.IsNotExist(err) {
-					//this is not an error because we need a way to uninstall
-					//plugins: when the plugin's files are removed, the next
-					//"holo apply file:/etc/holorc" will remove them from the
-					//holorc, but to be able to run, Holo needs to be able to
-					//ignore the missing uninstalled plugin at this point
-					output.Warnf(output.Stderr, "%s", err.Error())
-					output.Warnf(output.Stderr, "Skipping plugin: %s", pluginSpec)
-				} else {
-					output.Errorf(output.Stderr, "%s", err.Error())
-					return nil
-				}
 			}
 		} else {
 			//unknown line
@@ -155,38 +117,8 @@ func ReadConfiguration() *Configuration {
 		}
 	}
 
-	//check existence of resource directories
-	hasError := false
-	for _, plugin := range result.Plugins {
-		dir := plugin.Runtime.ResourceDirPath
-		fi, err := os.Stat(dir)
-		switch {
-		case err != nil:
-			output.Errorf(output.Stderr, "cannot open %s: %s", dir, err.Error())
-			hasError = true
-		case !fi.IsDir():
-			output.Errorf(output.Stderr, "cannot open %s: not a directory!", dir)
-			hasError = true
-		}
-	}
-	if hasError {
+	if !Setup(result.Plugins) {
 		return nil
 	}
-
-	//ensure existence of cache and state directories
-	for _, plugin := range result.Plugins {
-		dirs := []string{plugin.Runtime.CacheDirPath, plugin.Runtime.StateDirPath}
-		for _, dir := range dirs {
-			err := os.MkdirAll(dir, 0755)
-			if err != nil {
-				output.Errorf(output.Stderr, err.Error())
-				hasError = true
-			}
-		}
-	}
-	if hasError {
-		return nil
-	}
-
 	return &result
 }
