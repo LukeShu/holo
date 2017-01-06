@@ -115,7 +115,7 @@ func (target *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.
 	// match the upstream behavior of holo-files:
 	// https://github.com/holocm/holo/issues/19
 	if target.orphaned {
-		errs := target.handleOrphanedTargetBase()
+		errs := target.handleOrphanedTargetBase(stdout, stderr)
 		if len(errs) > 0 {
 			for _, err := range errs {
 				fmt.Fprintf(stderr, "!! %s\n", err.Error())
@@ -125,7 +125,7 @@ func (target *FilesEntity) Apply(withForce bool, stdout, stderr io.Writer) holo.
 		}
 		return holo.ApplyApplied
 	} else {
-		result, err := target.apply(withForce)
+		result, err := target.apply(withForce, stdout, stderr)
 
 		if err != nil {
 			fmt.Fprintf(stderr, "!! %s\n", err.Error())

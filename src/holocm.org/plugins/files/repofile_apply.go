@@ -23,11 +23,11 @@ package files
 import (
 	"bytes"
 	"fmt"
-	"os"
+	"io"
 	"os/exec"
 )
 
-func (repoFile RepoFile) ApplyTo(in *FileBuffer) (out *FileBuffer, err error) {
+func (repoFile RepoFile) ApplyTo(in *FileBuffer, stdout, stderr io.Writer) (out *FileBuffer, err error) {
 	if repoFile.ApplicationStrategy() == "passthru" {
 		// script //////////////////////////////////////////////
 
@@ -44,7 +44,7 @@ func (repoFile RepoFile) ApplyTo(in *FileBuffer) (out *FileBuffer, err error) {
 		cmd := exec.Command(repoFile.Path())
 		cmd.Stdin = bytes.NewBuffer(in.Contents)
 		cmd.Stdout = &stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = stderr
 		err = cmd.Run()
 		if err != nil {
 			return nil, fmt.Errorf("execution of %s failed: %s", repoFile.Path(), err.Error())

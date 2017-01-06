@@ -22,6 +22,7 @@ package files
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -38,7 +39,7 @@ func (target *FilesEntity) scanOrphanedTargetBase() (theTargetPath, strategy, as
 }
 
 // handleOrphanedTargetBase cleans up an orphaned target base.
-func (target *FilesEntity) handleOrphanedTargetBase() []error {
+func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []error {
 	targetPath, strategy, _ := target.scanOrphanedTargetBase()
 	targetBasePath := target.PathIn(target.plugin.targetBaseDirectory())
 
@@ -54,18 +55,18 @@ func (target *FilesEntity) handleOrphanedTargetBase() []error {
 		//if the package management left behind additional cleanup targets
 		//(most likely a backup of our custom configuration), we can delete
 		//these too
-		cleanupTargets := GetPackageManager().AdditionalCleanupTargets(targetPath)
+		cleanupTargets := GetPackageManager(stdout, stderr).AdditionalCleanupTargets(targetPath)
 		for _, otherFile := range cleanupTargets {
-			fmt.Printf(">> also deleting %s\n", otherFile)
+			fmt.Fprintf(stdout, ">> also deleting %s\n", otherFile)
 			appendError(os.Remove(otherFile))
 		}
 	case "restore":
 		//target is still there - restore the target base, *but* before that,
 		//check if there is an updated target base
-		updatedTBPath, reportedTBPath, err := GetPackageManager().FindUpdatedTargetBase(targetPath)
+		updatedTBPath, reportedTBPath, err := GetPackageManager(stdout, stderr).FindUpdatedTargetBase(targetPath)
 		appendError(err)
 		if updatedTBPath != "" {
-			fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, targetPath)
+			fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, targetPath)
 			//use this target base instead of the one in the TargetBaseDirectory
 			appendError(os.Remove(targetBasePath))
 			targetBasePath = updatedTBPath

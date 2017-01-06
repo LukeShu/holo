@@ -23,6 +23,7 @@ package files
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -33,7 +34,7 @@ import (
 // FilesEntity.  This includes taking a copy of the target base if
 // necessary, applying all repository entries, and saving the result
 // in the target path with the correct file metadata.
-func (target *FilesEntity) apply(withForce bool) (holo.ApplyResult, error) {
+func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo.ApplyResult, error) {
 	// determine the related paths
 	targetPath := target.PathIn(target.plugin.targetDirectory())
 	targetBasePath := target.PathIn(target.plugin.targetBaseDirectory())
@@ -77,13 +78,13 @@ func (target *FilesEntity) apply(withForce bool) (holo.ApplyResult, error) {
 
 	//step 3: check if a system update installed a new version of the stock
 	//configuration
-	updatedTBPath, reportedTBPath, err := GetPackageManager().FindUpdatedTargetBase(targetPath)
+	updatedTBPath, reportedTBPath, err := GetPackageManager(stdout, stderr).FindUpdatedTargetBase(targetPath)
 	if err != nil {
 		return nil, err
 	}
 	if updatedTBPath != "" {
 		//an updated stock configuration is available at updatedTBPath
-		fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
+		fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
 		err := CopyFile(updatedTBPath, targetBasePath)
 		if err != nil {
 			return nil, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
@@ -151,7 +152,7 @@ func (target *FilesEntity) apply(withForce bool) (holo.ApplyResult, error) {
 		repoEntries = repoEntries[firstStep:]
 	}
 	for _, repoFile := range repoEntries {
-		buffer, err = repoFile.ApplyTo(buffer)
+		buffer, err = repoFile.ApplyTo(buffer, stdout, stderr)
 		if err != nil {
 			return nil, err
 		}
