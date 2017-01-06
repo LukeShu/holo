@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/holocm/holo/cmd/holo/internal/output"
+	"github.com/holocm/holo/cmd/holo/internal/colorize"
 	"github.com/holocm/holo/lib/holo"
 )
 
@@ -74,7 +74,7 @@ func (p *Plugin) Command(args []string, fd1 io.Writer, fd2 io.Writer, fd3 *os.Fi
 	cmd := exec.Command(p.executablePath, args...)
 	cmd.Stdin = nil
 	cmd.Stdout = fd1
-	cmd.Stderr = &output.LineColorizingWriter{Writer: fd2, Rules: []output.LineColorizingRule{
+	cmd.Stderr = &color.LineColorizingWriter{Writer: fd2, Rules: []color.LineColorizingRule{
 		{[]byte("!! "), []byte("\x1B[1;31m")},
 		{[]byte(">> "), []byte("\x1B[1;33m")},
 	}}

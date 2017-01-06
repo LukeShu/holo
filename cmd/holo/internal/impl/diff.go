@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"syscall"
 
+	"github.com/holocm/holo/cmd/holo/internal/colorize"
 	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
@@ -78,7 +79,7 @@ func renderFileDiff(fromPath, toPath string) ([]byte, error) {
 	result = rx.ReplaceAll(result, []byte("+++ "+toPath))
 
 	//colorize diff
-	rules := []output.LineColorizingRule{
+	rules := []color.LineColorizingRule{
 		{[]byte("diff "), []byte("\x1B[1m")},
 		{[]byte("new "), []byte("\x1B[1m")},
 		{[]byte("deleted "), []byte("\x1B[1m")},
@@ -89,7 +90,7 @@ func renderFileDiff(fromPath, toPath string) ([]byte, error) {
 		{[]byte("+"), []byte("\x1B[32m")},
 	}
 
-	return output.ColorizeLines(result, rules), nil
+	return color.ColorizeLines(result, rules), nil
 }
 
 func checkFile(path string) (pathToUse string, returnError error) {
