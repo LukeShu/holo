@@ -83,3 +83,20 @@ func NewRuntime(id string) holo.Runtime {
 		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
 	}
 }
+
+func SetupRuntime(r holo.Runtime) bool {
+	hasError := false
+	if _, err := os.Stat(r.ResourceDirPath + "/"); err != nil {
+		output.Errorf(output.Stderr, "Resource directory cannot be opened: %q: %v", r.ResourceDirPath, err)
+		hasError = true
+	}
+	if err := os.MkdirAll(r.StateDirPath, 0755); err != nil {
+		output.Errorf(output.Stderr, "State directory cannot be created: %q: %v", r.StateDirPath, err)
+		hasError = true
+	}
+	if err := os.MkdirAll(r.CacheDirPath, 0755); err != nil {
+		output.Errorf(output.Stderr, "Cache directory cannot be created: %q: %v", r.CacheDirPath, err)
+		hasError = true
+	}
+	return !hasError
+}
