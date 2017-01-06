@@ -28,7 +28,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo/internal/output"
 	"github.com/holocm/holo/lib/holo"
 )
 
@@ -57,8 +56,8 @@ func scanParseAction(action string) (verb, reason string) {
 // reported immediately and will result in nil being returned. "No
 // entities found" will be reported as a non-nil empty slice.
 func (p *Plugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
-	var stdoutBuffer bytes.Buffer
-	err := p.Command([]string{"scan"}, &stdoutBuffer, output.Stderr, nil).Run()
+	var stdout bytes.Buffer
+	err := p.Command([]string{"scan"}, &stdout, stderr, nil).Run()
 	if err != nil {
 		return nil, fmt.Errorf("scan with plugin %s failed: %s", p.id, err.Error())
 	}
@@ -66,7 +65,7 @@ func (p *Plugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	// parse stdout
 	result := []holo.Entity{} // non-nil
 	var currentEntity *Entity // a pointer to the last element of result
-	for idx, line := range strings.Split(strings.TrimSpace(stdoutBuffer.String()), "\n") {
+	for idx, line := range strings.Split(strings.TrimSpace(stdout.String()), "\n") {
 		//skip empty lines
 		if line == "" {
 			continue

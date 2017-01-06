@@ -78,7 +78,7 @@ func (p *Plugin) HoloApply(entityID string, withForce bool, stdout, stderr io.Wr
 }
 
 func (p *Plugin) HoloDiff(entityID string, stderr io.Writer) (string, string) {
-	fd3text, err := p.RunCommandWithFD3([]string{"diff", entityID}, output.Stdout, output.Stderr)
+	fd3text, err := p.RunCommandWithFD3([]string{"diff", entityID}, output.Stdout, stderr)
 	if err != nil {
 		return "", ""
 	}
