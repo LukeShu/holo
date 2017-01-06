@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
@@ -77,7 +78,7 @@ func checkVersion(handle *PluginHandle, version int) error {
 }
 
 func (handle *PluginHandle) Scan() ([]*EntityHandle, error) {
-	entities, err := handle.Plugin.HoloScan()
+	entities, err := handle.Plugin.HoloScan(output.Stderr)
 	if err != nil {
 		return nil, err
 	}

@@ -23,11 +23,11 @@ package external
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"regexp"
 	"sort"
 	"strings"
 
-	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
@@ -55,9 +55,9 @@ func scanParseAction(action string) (verb, reason string) {
 // Scan discovers entities available for the given entity. Errors are
 // reported immediately and will result in nil being returned. "No
 // entities found" will be reported as a non-nil empty slice.
-func (p *Plugin) HoloScan() ([]holo.Entity, error) {
+func (p *Plugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	var stdout bytes.Buffer
-	err := p.Command([]string{"scan"}, &stdout, output.Stderr, nil).Run()
+	err := p.Command([]string{"scan"}, &stdout, stderr, nil).Run()
 	if err != nil {
 		return nil, fmt.Errorf("scan with plugin %s failed: %s", p.id, err.Error())
 	}

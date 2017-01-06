@@ -175,7 +175,7 @@ func (ehandle *EntityHandle) PrintScanReport() {
 // that can be applied to last provisioned version into the current
 // version.
 func (ehandle *EntityHandle) RenderDiff() ([]byte, error) {
-	new, cur := ehandle.PluginHandle.Plugin.HoloDiff(ehandle.Entity.EntityID())
+	new, cur := ehandle.PluginHandle.Plugin.HoloDiff(ehandle.Entity.EntityID(), output.Stderr)
 	if new == "" && cur == "" {
 		return nil, nil
 	}

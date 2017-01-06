@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"holocm.org/lib/holo"
 )
@@ -41,7 +40,7 @@ func (p FilesPlugin) HoloInfo() map[string]string {
 	}
 }
 
-func (p FilesPlugin) HoloScan() ([]holo.Entity, error) {
+func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	a := p.ScanRepo()
 	if a == nil {
 		return nil, errors.New("")
@@ -54,15 +53,15 @@ func (p FilesPlugin) HoloScan() ([]holo.Entity, error) {
 }
 
 func (p FilesPlugin) HoloApply(entityID string, force bool, stdout, stderr io.Writer) holo.ApplyResult {
-	e, err := p.getEntity(entityID)
+	e, err := p.getEntity(entityID, stderr)
 	if err != nil {
 		return holo.NewApplyError(err)
 	}
 	return e.Apply(force, stdout, stderr)
 }
 
-func (p FilesPlugin) HoloDiff(entityID string) (string, string) {
-	selectedEntity, err := p.getEntity(entityID)
+func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string) {
+	selectedEntity, err := p.getEntity(entityID, stderr)
 	if err != nil {
 		return "", ""
 	}
@@ -71,7 +70,7 @@ func (p FilesPlugin) HoloDiff(entityID string) (string, string) {
 	return new, cur
 }
 
-func (p FilesPlugin) getEntity(entityID string) (*FilesEntity, error) {
+func (p FilesPlugin) getEntity(entityID string, stderr io.Writer) (*FilesEntity, error) {
 	entities := p.ScanRepo()
 	if entities == nil {
 		// some fatal error occurred - it was already
@@ -86,7 +85,7 @@ func (p FilesPlugin) getEntity(entityID string) (*FilesEntity, error) {
 		}
 	}
 	if selectedEntity == nil {
-		fmt.Fprintf(os.Stderr, "!! unknown entity ID \"%s\"\n", entityID)
+		fmt.Fprintf(stderr, "!! unknown entity ID \"%s\"\n", entityID)
 		return nil, errors.New("")
 	}
 	return selectedEntity, nil

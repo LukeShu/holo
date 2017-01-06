@@ -33,7 +33,7 @@ type Plugin interface {
 
 	// Scan Runtime.ResourceDirPath and return a list of entities
 	// that this plugin can provision.
-	HoloScan() ([]Entity, error)
+	HoloScan(stderr io.Writer) ([]Entity, error)
 
 	// Provision entityID
 	HoloApply(entityID string, force bool, stdout, stderr io.Writer) ApplyResult
@@ -47,5 +47,5 @@ type Plugin interface {
 	// returned for one state.  If the entity does not have a
 	// meaningful textual representation, then two empty strings
 	// should be returned.
-	HoloDiff(entityID string) (string, string)
+	HoloDiff(entityID string, stderr io.Writer) (string, string)
 }

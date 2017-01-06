@@ -40,7 +40,7 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 			fmt.Printf("%s=%s\n", key, val)
 		}
 	case "scan":
-		entities, err := plugin.HoloScan()
+		entities, err := plugin.HoloScan(os.Stderr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v", err)
 			os.Exit(1)
@@ -74,7 +74,7 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 		}
 		os.Exit(result.ExitCode())
 	case "diff":
-		new, cur := plugin.HoloDiff(os.Args[2])
+		new, cur := plugin.HoloDiff(os.Args[2], os.Stderr)
 		if new == "" && cur == "" {
 			os.Exit(0)
 		}
