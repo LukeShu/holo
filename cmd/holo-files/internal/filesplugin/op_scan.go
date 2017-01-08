@@ -21,16 +21,19 @@
 package filesplugin
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
+	"github.com/holocm/holo/lib/holo"
 )
 
-// ScanRepo returns a slice of all the FilesEntity entities.
-func (p FilesPlugin) ScanRepo() []*FilesEntity {
+// HoloScan returns a slice of all the FilesEntity entities.  The
+// entities are guaranteed to have the concrete type "*FileEntity".
+func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	//walk over the resource directory to find resources (and thus the corresponding entities)
 	entities := make(map[string]*FilesEntity)
 	resourceDir := p.Runtime.ResourceDirPath
@@ -95,17 +98,19 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	})
 
 	//flatten result into list
-	result := make([]*FilesEntity, 0, len(entities))
+	result := make([]holo.Entity, 0, len(entities))
 	for _, entity := range entities {
 		result = append(result, entity)
 	}
 
 	sort.Sort(entityList(result))
-	return result
+	return result, nil
 }
 
-type entityList []*FilesEntity
+type entityList []holo.Entity
 
-func (f entityList) Len() int           { return len(f) }
-func (f entityList) Less(i, j int) bool { return f[i].relPath < f[j].relPath }
-func (f entityList) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
+func (f entityList) Len() int { return len(f) }
+func (f entityList) Less(i, j int) bool {
+	return f[i].(*FilesEntity).relPath < f[j].(*FilesEntity).relPath
+}
+func (f entityList) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
