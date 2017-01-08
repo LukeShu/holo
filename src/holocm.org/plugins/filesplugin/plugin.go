@@ -41,24 +41,12 @@ func (p FilesPlugin) HoloInfo() map[string]string {
 	}
 }
 
-func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
-	a := p.ScanRepo()
-	if a == nil {
-		return nil, errors.New("")
-	}
-	b := make([]holo.Entity, len(a))
-	for i := range a {
-		b[i] = a[i]
-	}
-	return b, nil
-}
-
 func (p FilesPlugin) HoloApply(entityID string, force bool, stdout, stderr io.Writer) holo.ApplyResult {
 	e, err := p.getEntity(entityID, stderr)
 	if err != nil {
 		return holo.NewApplyError(err)
 	}
-	return e.Apply(force, stdout, stderr)
+	return e.(*FilesEntity).Apply(force, stdout, stderr)
 }
 
 func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string) {
@@ -66,30 +54,23 @@ func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string
 	if err != nil {
 		return "", ""
 	}
-	new := selectedEntity.PathIn(p.Runtime.StateDirPath + "/provisioned")
-	cur := selectedEntity.PathIn(p.Runtime.RootDirPath)
+	new := selectedEntity.(*FilesEntity).PathIn(p.Runtime.StateDirPath + "/provisioned")
+	cur := selectedEntity.(*FilesEntity).PathIn(p.Runtime.RootDirPath)
 	return new, cur
 }
 
-func (p FilesPlugin) getEntity(entityID string, stderr io.Writer) (*FilesEntity, error) {
-	entities := p.ScanRepo()
-	if entities == nil {
-		// some fatal error occurred - it was already
-		// reported, so just exit
-		return nil, errors.New("")
+func (p FilesPlugin) getEntity(entityID string, stderr io.Writer) (holo.Entity, error) {
+	entities, err := p.HoloScan(stderr)
+	if err != nil {
+		return nil, err
 	}
-	var selectedEntity *FilesEntity
 	for _, entity := range entities {
 		if entity.EntityID() == entityID {
-			selectedEntity = entity
-			break
+			return entity, nil
 		}
 	}
-	if selectedEntity == nil {
-		fmt.Fprintf(stderr, "!! unknown entity ID \"%s\"\n", entityID)
-		return nil, errors.New("")
-	}
-	return selectedEntity, nil
+	fmt.Fprintf(stderr, "!! unknown entity ID \"%s\"\n", entityID)
+	return nil, errors.New("")
 }
 
 func NewFilesPlugin(r holo.Runtime) holo.Plugin {

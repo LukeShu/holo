@@ -21,16 +21,19 @@
 package filesplugin
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"holocm.org/lib/holo"
 	"holocm.org/plugins/filesplugin/fileutil"
 )
 
-// ScanRepo returns a slice of all the FilesEntity entities.
-func (p FilesPlugin) ScanRepo() []*FilesEntity {
+// HoloScan returns a slice of all the FilesEntity entities.  The
+// entities are guaranteed to have the concrete type "*FileEntity".
+func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	//walk over the repo to find repo files (and thus the corresponding target files)
 	targets := make(map[string]*FilesEntity)
 	repoDir := p.Runtime.ResourceDirPath
@@ -93,17 +96,19 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	})
 
 	//flatten result into list
-	result := make([]*FilesEntity, 0, len(targets))
+	result := make([]holo.Entity, 0, len(targets))
 	for _, target := range targets {
 		result = append(result, target)
 	}
 
 	sort.Sort(filesByPath(result))
-	return result
+	return result, nil
 }
 
-type filesByPath []*FilesEntity
+type filesByPath []holo.Entity
 
-func (f filesByPath) Len() int           { return len(f) }
-func (f filesByPath) Less(i, j int) bool { return f[i].relTargetPath < f[j].relTargetPath }
-func (f filesByPath) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
+func (f filesByPath) Len() int { return len(f) }
+func (f filesByPath) Less(i, j int) bool {
+	return f[i].(*FilesEntity).relTargetPath < f[j].(*FilesEntity).relTargetPath
+}
+func (f filesByPath) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
