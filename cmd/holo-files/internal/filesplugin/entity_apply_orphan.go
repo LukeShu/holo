@@ -32,7 +32,7 @@ import (
 // assesses the situation. This logic is grouped in one function
 // because it's used by both `holo scan` and `holo apply`.
 func (entity *FilesEntity) scanOrphan() (targetPath, strategy, assessment string) {
-	targetPath = entity.PathIn(entity.plugin.targetDirectory())
+	targetPath = entity.PathIn(entity.plugin.Runtime.RootDirPath)
 	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
@@ -42,7 +42,7 @@ func (entity *FilesEntity) scanOrphan() (targetPath, strategy, assessment string
 // applyOrphan cleans up an orphaned entity.
 func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 	_, strategy, _ := entity.scanOrphan()
-	basePath := entity.PathIn(entity.plugin.baseDirectory())
+	basePath := entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base")
 
 	var errs []error
 	appendError := func(err error) {
@@ -64,7 +64,7 @@ func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 		//if the package management left behind additional cleanup targets
 		//(most likely a backup of our custom configuration), we can delete
 		//these too
-		cleanupTargets := GetPackageManager(entity.plugin.targetDirectory(), stdout, stderr).AdditionalCleanupTargets(current.Path)
+		cleanupTargets := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).AdditionalCleanupTargets(current.Path)
 		for _, path := range cleanupTargets {
 			otherFile, err := fileutil.NewFileBuffer(path)
 			if err != nil {
@@ -81,7 +81,7 @@ func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 	case "restore":
 		//target is still there - restore the target base, *but* before that,
 		//check if there is an updated target base
-		updatedTBPath, reportedTBPath, err := GetPackageManager(entity.plugin.targetDirectory(), stdout, stderr).FindUpdatedTargetBase(current.Path)
+		updatedTBPath, reportedTBPath, err := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).FindUpdatedTargetBase(current.Path)
 		appendError(err)
 		if updatedTBPath != "" {
 			fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, current.Path)
@@ -95,6 +95,6 @@ func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 	}
 
 	// TODO(majewsky): cleanup empty directories below
-	// BaseDirectory() and ProvisionedDirectory()
+	// StateDirPath+"/base" and StateDirPath+"/provisioned"
 	return errs
 }

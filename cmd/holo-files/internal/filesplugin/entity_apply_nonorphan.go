@@ -183,24 +183,24 @@ func (entity *FilesEntity) applyNonOrphan(withForce bool, stdout, stderr io.Writ
 //GetBase return the package manager-supplied base version of the
 //entity, as recorded the last time it was provisioned.
 func (entity *FilesEntity) GetBase() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.baseDirectory()))
+	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base"))
 }
 
 //GetProvisioned returns the recorded last-provisioned state of the
 //entity.
 func (entity *FilesEntity) GetProvisioned() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.provisionedDirectory()))
+	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.Runtime.StateDirPath + "/provisioned"))
 }
 
 //GetCurrent returns the current version of the entity.
 func (entity *FilesEntity) GetCurrent() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.targetDirectory()))
+	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.Runtime.RootDirPath))
 }
 
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
 func (entity *FilesEntity) GetNewBase(stdout, stderr io.Writer) (path string, buf fileutil.FileBuffer, err error) {
-	realPath, path, err := GetPackageManager(entity.plugin.targetDirectory(), stdout, stderr).FindUpdatedTargetBase(entity.PathIn(entity.plugin.targetDirectory()))
+	realPath, path, err := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).FindUpdatedTargetBase(entity.PathIn(entity.plugin.Runtime.RootDirPath))
 	if err != nil {
 		return
 	}
@@ -227,7 +227,7 @@ func (entity *FilesEntity) GetDesired(base fileutil.FileBuffer, stdout, stderr i
 	// load the base into a buffer as the start for the
 	// application algorithm
 	buffer := base
-	buffer.Path = entity.PathIn(entity.plugin.targetDirectory())
+	buffer.Path = entity.PathIn(entity.plugin.Runtime.RootDirPath)
 
 	// apply all the applicable resources in order
 	var err error

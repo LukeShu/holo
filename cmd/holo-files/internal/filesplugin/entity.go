@@ -52,9 +52,9 @@ func (p FilesPlugin) NewEntity(relPath string) *FilesEntity {
 // directory.
 //
 //    var (
-//        targetPath      = entity.pathIn(entity.plugin.targetDirectory())      // e.g. "/etc/foo.conf"
-//        basePath        = entity.pathIn(entity.plugin.baseDirectory())        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
-//        provisionedPath = entity.pathIn(entity.plugin.provisionedDirectory()) // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
+//        targetPath      = entity.pathIn(entity.plugin.Runtime.RootDirPath)                   // e.g. "/etc/foo.conf"
+//        basePath        = entity.pathIn(entity.plugin.Runtime.StateDirPath + "/base")        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
+//        provisionedPath = entity.pathIn(entity.plugin.Runtime.StateDirPath + "/provisioned") // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
 //    )
 func (entity *FilesEntity) PathIn(directory string) string {
 	return filepath.Join(directory, entity.relPath)
@@ -106,9 +106,9 @@ func (entity *FilesEntity) EntitySource() []string {
 func (entity *FilesEntity) EntityUserInfo() (r []holo.KV) {
 	if len(entity.resources) == 0 {
 		_, strategy, _ := entity.scanOrphan()
-		r = append(r, holo.KV{strategy, entity.PathIn(entity.plugin.baseDirectory())})
+		r = append(r, holo.KV{strategy, entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base")})
 	} else {
-		r = append(r, holo.KV{"store at", entity.PathIn(entity.plugin.baseDirectory())})
+		r = append(r, holo.KV{"store at", entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base")})
 		for _, resource := range entity.Resources() {
 			r = append(r, holo.KV{resource.ApplicationStrategy(), resource.Path()})
 		}

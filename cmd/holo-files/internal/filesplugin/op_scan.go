@@ -33,7 +33,7 @@ import (
 func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	//walk over the resource directory to find resources (and thus the corresponding entities)
 	entities := make(map[string]*FilesEntity)
-	resourceDir := p.resourceDirectory()
+	resourceDir := p.Runtime.ResourceDirPath
 	filepath.Walk(resourceDir, func(resourcePath string, resourceFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
@@ -67,7 +67,7 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	})
 
 	//walk over the base directory to find orphaned entities
-	baseDir := p.baseDirectory()
+	baseDir := p.Runtime.StateDirPath + "/base"
 	filepath.Walk(baseDir, func(basePath string, baseFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
