@@ -33,7 +33,7 @@ import (
 func (p FilesPlugin) ScanRepo() []*FilesEntity {
 	//walk over the repo to find repo files (and thus the corresponding target files)
 	targets := make(map[string]*FilesEntity)
-	repoDir := p.resourceDirectory()
+	repoDir := p.Runtime.ResourceDirPath
 	filepath.Walk(repoDir, func(repoPath string, repoFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
@@ -58,14 +58,14 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 		repoEntry := p.NewRepoFile(repoPath)
 		targetPath := repoEntry.TargetPath()
 		if targets[targetPath] == nil {
-			targets[targetPath] = p.NewFilesEntityFromPathIn(p.targetDirectory(), targetPath)
+			targets[targetPath] = p.NewFilesEntityFromPathIn(p.Runtime.RootDirPath, targetPath)
 		}
 		targets[targetPath].AddRepoEntry(repoEntry)
 		return nil
 	})
 
 	//walk over the target base directory to find orphaned target bases
-	targetBaseDir := p.targetBaseDirectory()
+	targetBaseDir := p.Runtime.StateDirPath + "/base"
 	filepath.Walk(targetBaseDir, func(targetBasePath string, targetBaseFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
@@ -84,7 +84,7 @@ func (p FilesPlugin) ScanRepo() []*FilesEntity {
 		//(if not, it's orphaned)
 		//TODO: s/(targetBase)Path/\1Dir/g and s/(targetBase)File/Path/g
 		target := p.NewFilesEntityFromPathIn(targetBaseDir, targetBasePath)
-		targetPath := target.PathIn(p.targetDirectory())
+		targetPath := target.PathIn(p.Runtime.RootDirPath)
 		if targets[targetPath] == nil {
 			target.orphaned = true
 			targets[targetPath] = target

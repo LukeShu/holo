@@ -55,7 +55,7 @@ func (file RepoFile) TargetPath() string {
 	}
 
 	// make path relative
-	relPath, _ := filepath.Rel(file.plugin.resourceDirectory(), repoFile)
+	relPath, _ := filepath.Rel(file.plugin.Runtime.ResourceDirPath, repoFile)
 
 	// remove the disambiguation path element to get to the
 	// relPath for the ConfigFile
@@ -68,15 +68,15 @@ func (file RepoFile) TargetPath() string {
 	segments := strings.SplitN(relPath, fmt.Sprintf("%c", filepath.Separator), 2)
 	relPath = segments[1]
 
-	return filepath.Join(file.plugin.targetDirectory(), relPath)
+	return filepath.Join(file.plugin.Runtime.RootDirPath, relPath)
 }
 
 // Disambiguator returns the disambiguator, i.e. the Path() element
 // before the TargetPath() that disambiguates multiple repo entries
 // for the same target file.
 func (file RepoFile) Disambiguator() string {
-	//make path relative to ResourceDirectory()
-	relPath, _ := filepath.Rel(file.plugin.resourceDirectory(), file.Path())
+	//make path relative to Runtime.ResourceDirPath
+	relPath, _ := filepath.Rel(file.plugin.Runtime.ResourceDirPath, file.Path())
 	//the disambiguator is the first path element in there
 	segments := strings.SplitN(relPath, fmt.Sprintf("%c", filepath.Separator), 2)
 	return segments[0]

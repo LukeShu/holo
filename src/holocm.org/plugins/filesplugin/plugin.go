@@ -66,8 +66,8 @@ func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string
 	if err != nil {
 		return "", ""
 	}
-	new := selectedEntity.PathIn(p.provisionedDirectory())
-	cur := selectedEntity.PathIn(p.targetDirectory())
+	new := selectedEntity.PathIn(p.Runtime.StateDirPath + "/provisioned")
+	cur := selectedEntity.PathIn(p.Runtime.RootDirPath)
 	return new, cur
 }
 
