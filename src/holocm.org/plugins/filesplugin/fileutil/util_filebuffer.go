@@ -146,10 +146,13 @@ func (fb *FileBuffer) ResolveSymlink() (*FileBuffer, error) {
 		target = filepath.Join(baseDir, target)
 	}
 
-	//read the contents of the target file (NOTE: It's tempting to just use
-	//NewFileBuffer here, but that might give us another FileBuffer with a
-	//symlink in it, and this time the symlink target might not resolve
-	//correctly against the original BasePath. So we explicitly read the file.)
+	// read the contents of the target file
+	//
+	// Note: It's tempting to just use NewFileBuffer here, but
+	// that might give us another FileBuffer with a symlink in it,
+	// and this time the symlink target might not resolve
+	// correctly against the original BasePath. So we explicitly
+	// read the file.
 	contents, err := ioutil.ReadFile(target)
 	if err != nil {
 		return nil, err

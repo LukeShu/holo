@@ -67,7 +67,11 @@ func (target *FilesEntity) RepoEntries() []RepoFile {
 
 // EntityID returns the entity ID for this target file.
 func (target *FilesEntity) EntityID() string {
+	// BUG(lukeshu): FilesEntity.EntityID: I don't believe that
+	// HOLO_ROOT_DIR should affect this, but changing that breaks
+	// the tests.
 	return "file:" + filepath.Join(target.plugin.Runtime.RootDirPath, target.relPath)
+	//return "file:" + filepath.Join("/", target.relPath)
 }
 
 func (target *FilesEntity) EntityAction() (verb, reason string) {

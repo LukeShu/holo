@@ -55,7 +55,7 @@ func FilterEntities(allEntities []*EntityHandle, selectors map[string]bool) []*E
 			if entity.MatchesSelector(selector) {
 				isEntitySelected = true
 				selectors[selector] = true
-				// NOTE: don't break from the
+				// Note: don't break from the
 				// selectors loop; we want to look at
 				// every selector because this loop
 				// also verifies that selectors are

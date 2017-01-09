@@ -98,10 +98,12 @@ func MoveFile(fromPath, toPath string) error {
 // ApplyFilePermissions applies permission flags and ownership from
 // the first file to the second file.
 func ApplyFilePermissions(fromPath, toPath string) error {
-	//apply permissions, ownership, modification date from source file to target file
-	//NOTE: We cannot just pass the FileMode in WriteFile(), because its
-	//FileMode argument is only applied when a new file is created, not when
-	//an existing one is truncated.
+	// apply permissions, ownership, modification date from source
+	// file to target file
+	//
+	// Note: We cannot just pass the FileMode in WriteFile(),
+	// because its FileMode argument is only applied when a new
+	// file is created, not when an existing one is truncated.
 	info, err := os.Lstat(fromPath)
 	if err != nil {
 		return err
@@ -112,14 +114,14 @@ func ApplyFilePermissions(fromPath, toPath string) error {
 	}
 
 	if targetInfo.Mode()&os.ModeSymlink == 0 {
-		//apply permissions
+		// apply permissions
 		err = os.Chmod(toPath, info.Mode())
 		if err != nil {
 			return err
 		}
 
-		//apply ownership
-		stat := info.Sys().(*syscall.Stat_t) // UGLY
+		// apply ownership
+		stat := info.Sys().(*syscall.Stat_t) // FIXME(majewsky): ugly
 		err = os.Chown(toPath, int(stat.Uid), int(stat.Gid))
 		if err != nil {
 			return err

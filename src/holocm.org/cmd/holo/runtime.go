@@ -40,8 +40,8 @@ func init() {
 		rootDir = "/"
 	}
 
-	// BUG(lukeshu): Consider inspecting os.TempDir() to see if it
-	// is below rootDir.  I don't think it's important to do so
+	// TODO(lukeshu): Consider inspecting os.TempDir() to see if
+	// it is below rootDir.  I don't think it's important to do so
 	// because us ioutil.TempDir() avoids conflicts.
 	var err error
 	cacheDir, err = ioutil.TempDir(os.TempDir(), "holo.")

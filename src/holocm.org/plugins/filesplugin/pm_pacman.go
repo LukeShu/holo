@@ -24,7 +24,7 @@ import (
 	"holocm.org/plugins/filesplugin/fileutil"
 )
 
-// pmPacman provides the PackageManager for pacman/libalpm-base
+// pmPacman provides the PackageManager for pacman/libalpm-based
 // distributions (Arch Linux and derivatives).
 type pmPacman struct{}
 

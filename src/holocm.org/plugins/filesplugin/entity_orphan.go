@@ -55,9 +55,15 @@ func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []
 
 	switch strategy {
 	case "delete":
-		//if the package management left behind additional cleanup targets
-		//(most likely a backup of our custom configuration), we can delete
-		//these too
+		// if the package management left behind additional
+		// cleanup targets (most likely a backup of our custom
+		// configuration), we can delete these too
+		//
+		// BUG(lukeshu): We should first compare the .pacsave
+		// file to a version in /provisioned to verify that
+		// the .pacsave file only has holo-files made changes;
+		// otherwise we should leave it behind for the same
+		// reason that pacman did.
 		cleanupTargets := GetPackageManager(stdout, stderr).AdditionalCleanupTargets(targetPath)
 		for _, otherFile := range cleanupTargets {
 			fmt.Fprintf(stdout, ">> also deleting %s\n", otherFile)
@@ -87,6 +93,7 @@ func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []
 	}
 	appendError(os.Remove(targetBasePath))
 
-	//TODO: cleanup empty directories below StateDirPath+"/provisioned" and StateDirPath+"/provisioned"
+	// TODO(majewsky): cleanup empty directories below
+	// StateDirPath+"/provisioned" and StateDirPath+"/provisioned"
 	return errs
 }

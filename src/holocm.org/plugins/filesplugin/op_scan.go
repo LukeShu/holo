@@ -33,6 +33,7 @@ import (
 
 // HoloScan returns a slice of all the FilesEntity entities.  The
 // entities are guaranteed to have the concrete type "*FileEntity".
+// The entities are sorted by path.
 func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	//walk over the repo to find repo files (and thus the corresponding target files)
 	targets := make(map[string]*FilesEntity)
@@ -46,7 +47,10 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		if !fileutil.IsManageableFileInfo(repoFileInfo) {
 			return nil
 		}
-		//don't consider repoDir itself to be a repo entry (it might be a symlink)
+		// don't consider resourceDir itself to be a repo
+		// entry (it might have passed the
+		// IsManageableFileInfo check because it might be a
+		// symlink)
 		if repoPath == resourceDir {
 			return nil
 		}
@@ -78,14 +82,18 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		if !fileutil.IsManageableFileInfo(fileInfo) {
 			return nil
 		}
-		//don't consider targetBaseDir itself to be a target base (it might be a symlink)
+		// don't consider targetBaseDir itself to be a target
+		// base (it might have passed the IsManageableFileInfo
+		// check because it might be a symlink)
 		if filePath == targetBaseDir {
 			return nil
 		}
 
-		//check if we have seen the config file for this target base
-		//(if not, it's orphaned)
-		//TODO: s/(targetBase)Path/\1Dir/g and s/(targetBase)File/Path/g
+		// check if we have seen the config file for this
+		// target base (if not, it's orphaned)
+		//
+		// TODO(majewsky): s/(targetBase)Path/\1Dir/g and
+		// s/(targetBase)File/Path/g
 		target := p.NewFilesEntity(targetBaseDir, filePath)
 		targetPath := filepath.Join(p.Runtime.RootDirPath, target.relPath)
 		if targets[targetPath] == nil {
