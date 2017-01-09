@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 
 	"holocm.org/lib/holo"
 )
@@ -54,8 +55,9 @@ func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string
 	if err != nil {
 		return "", ""
 	}
-	new := selectedEntity.(*FilesEntity).PathIn(p.Runtime.StateDirPath + "/provisioned")
-	cur := selectedEntity.(*FilesEntity).PathIn(p.Runtime.RootDirPath)
+	relPath := selectedEntity.(*FilesEntity).relPath
+	new := filepath.Join(p.Runtime.StateDirPath+"/provisioned", relPath)
+	cur := filepath.Join(p.Runtime.RootDirPath, relPath)
 	return new, cur
 }
 

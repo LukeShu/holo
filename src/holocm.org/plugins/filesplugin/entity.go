@@ -33,33 +33,23 @@ import (
 //
 // It represents a configuration file that can be provisioned by Holo.
 type FilesEntity struct {
-	relTargetPath string //the target path relative to the plugin.Runtime.RootDirPath
-	orphaned      bool   //default: false
-	repoEntries   RepoFiles
-	plugin        FilesPlugin
+	relPath     string // the target path relative to the plugin.Runtime.RootDirPath
+	orphaned    bool   // default: false
+	repoEntries RepoFiles
+	plugin      FilesPlugin
 }
 
-// NewFilesEntityFromPathIn creates a FilesEntity instance for which a
-// path relative to a known location is known.
+// NewFilesEntity creates a FilesEntity instance for which a path
+// relative to a known location is known.
 //
-//    target := p.NewFilesEntityFromPathIn(p.Runtime.RootDirPath, targetPath)
-//    target := p.NewFilesEntityFromPathIn(p.Runtime.StateDirPath + "/provisioned", provisionedPath)
-func (p FilesPlugin) NewFilesEntityFromPathIn(directory, path string) *FilesEntity {
-	//make path relative
-	relTargetPath, _ := filepath.Rel(directory, path)
-	return &FilesEntity{relTargetPath: relTargetPath, plugin: p}
-}
-
-// PathIn returns the path to this target file relative to the given
-// directory.
+//    target := p.NewFilesEntity(p.Runtime.RootDirPath, targetPath)
 //
-//    var (
-//        targetPath      = target.pathIn(target.plugin.Runtime.RootDirPath)                   // e.g. "/etc/foo.conf"
-//        targetBasePath  = target.pathIn(target.plugin.Runtime.StateDirPath + "/base")        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
-//        provisionedPath = target.pathIn(target.plugin.Runtime.StateDirPath + "/provisioned") // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
-//    )
-func (target *FilesEntity) PathIn(directory string) string {
-	return filepath.Join(directory, target.relTargetPath)
+//    target := p.NewFilesEntity("/var/lib/holo/files/provisioned", "/var/lib/holo/files/provisioned/etc/locale.conf")
+//    target := p.NewFilesEntity(p.Runtime.StateDirPath + "/provisioned", provisionedPath)
+func (p FilesPlugin) NewFilesEntity(basedir, entitypath string) *FilesEntity {
+	// make path relative
+	relPath, _ := filepath.Rel(basedir, entitypath)
+	return &FilesEntity{relPath: relPath, plugin: p}
 }
 
 // AddRepoEntry registers a new repository entry in this FilesEntity
@@ -77,7 +67,7 @@ func (target *FilesEntity) RepoEntries() []RepoFile {
 
 // EntityID returns the entity ID for this target file.
 func (target *FilesEntity) EntityID() string {
-	return "file:" + target.PathIn(target.plugin.Runtime.RootDirPath)
+	return "file:" + filepath.Join(target.plugin.Runtime.RootDirPath, target.relPath)
 }
 
 func (target *FilesEntity) EntityAction() (verb, reason string) {
@@ -102,9 +92,9 @@ func (target *FilesEntity) EntitySource() []string {
 func (target *FilesEntity) EntityUserInfo() (r []holo.KV) {
 	if target.orphaned {
 		_, strategy, _ := target.scanOrphanedTargetBase()
-		r = append(r, holo.KV{strategy, target.PathIn(target.plugin.Runtime.StateDirPath + "/base")})
+		r = append(r, holo.KV{strategy, filepath.Join(target.plugin.Runtime.StateDirPath+"/base", target.relPath)})
 	} else {
-		r = append(r, holo.KV{"store at", target.PathIn(target.plugin.Runtime.StateDirPath + "/base")})
+		r = append(r, holo.KV{"store at", filepath.Join(target.plugin.Runtime.StateDirPath+"/base", target.relPath)})
 		for _, entry := range target.RepoEntries() {
 			r = append(r, holo.KV{entry.ApplicationStrategy(), entry.Path()})
 		}

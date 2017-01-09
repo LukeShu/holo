@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"holocm.org/plugins/filesplugin/fileutil"
 )
@@ -33,7 +34,7 @@ import (
 // one function because it's used by both `holo scan` and `holo
 // apply`.
 func (target *FilesEntity) scanOrphanedTargetBase() (theTargetPath, strategy, assessment string) {
-	targetPath := target.PathIn(target.plugin.Runtime.RootDirPath)
+	targetPath := filepath.Join(target.plugin.Runtime.RootDirPath, target.relPath)
 	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
@@ -43,7 +44,7 @@ func (target *FilesEntity) scanOrphanedTargetBase() (theTargetPath, strategy, as
 // handleOrphanedTargetBase cleans up an orphaned target base.
 func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []error {
 	targetPath, strategy, _ := target.scanOrphanedTargetBase()
-	targetBasePath := target.PathIn(target.plugin.Runtime.StateDirPath + "/base")
+	targetBasePath := filepath.Join(target.plugin.Runtime.StateDirPath+"/base", target.relPath)
 
 	var errs []error
 	appendError := func(err error) {
@@ -79,7 +80,7 @@ func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []
 	}
 
 	//target is not managed by Holo anymore, so delete the provisioned target and the target base
-	lastProvisionedPath := target.PathIn(target.plugin.Runtime.StateDirPath + "/provisioned")
+	lastProvisionedPath := filepath.Join(target.plugin.Runtime.StateDirPath+"/provisioned", target.relPath)
 	err := os.Remove(lastProvisionedPath)
 	if err != nil && !os.IsNotExist(err) {
 		appendError(err)

@@ -36,8 +36,8 @@ import (
 func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	//walk over the repo to find repo files (and thus the corresponding target files)
 	targets := make(map[string]*FilesEntity)
-	repoDir := p.Runtime.ResourceDirPath
-	filepath.Walk(repoDir, func(repoPath string, repoFileInfo os.FileInfo, err error) error {
+	resourceDir := p.Runtime.ResourceDirPath
+	filepath.Walk(resourceDir, func(repoPath string, repoFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
@@ -47,12 +47,12 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 			return nil
 		}
 		//don't consider repoDir itself to be a repo entry (it might be a symlink)
-		if repoPath == repoDir {
+		if repoPath == resourceDir {
 			return nil
 		}
 		//only look at files within subdirectories (files in the repo directory
 		//itself are skipped)
-		relPath, _ := filepath.Rel(repoDir, repoPath)
+		relPath, _ := filepath.Rel(resourceDir, repoPath)
 		if !strings.ContainsRune(relPath, filepath.Separator) {
 			return nil
 		}
@@ -61,7 +61,7 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		repoEntry := p.NewRepoFile(repoPath)
 		targetPath := repoEntry.TargetPath()
 		if targets[targetPath] == nil {
-			targets[targetPath] = p.NewFilesEntityFromPathIn(p.Runtime.RootDirPath, targetPath)
+			targets[targetPath] = p.NewFilesEntity(p.Runtime.RootDirPath, targetPath)
 		}
 		targets[targetPath].AddRepoEntry(repoEntry)
 		return nil
@@ -69,25 +69,25 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 
 	//walk over the target base directory to find orphaned target bases
 	targetBaseDir := p.Runtime.StateDirPath + "/base"
-	filepath.Walk(targetBaseDir, func(targetBasePath string, targetBaseFileInfo os.FileInfo, err error) error {
+	filepath.Walk(targetBaseDir, func(filePath string, fileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !fileutil.IsManageableFileInfo(targetBaseFileInfo) {
+		if !fileutil.IsManageableFileInfo(fileInfo) {
 			return nil
 		}
 		//don't consider targetBaseDir itself to be a target base (it might be a symlink)
-		if targetBasePath == targetBaseDir {
+		if filePath == targetBaseDir {
 			return nil
 		}
 
 		//check if we have seen the config file for this target base
 		//(if not, it's orphaned)
 		//TODO: s/(targetBase)Path/\1Dir/g and s/(targetBase)File/Path/g
-		target := p.NewFilesEntityFromPathIn(targetBaseDir, targetBasePath)
-		targetPath := target.PathIn(p.Runtime.RootDirPath)
+		target := p.NewFilesEntity(targetBaseDir, filePath)
+		targetPath := filepath.Join(p.Runtime.RootDirPath, target.relPath)
 		if targets[targetPath] == nil {
 			target.orphaned = true
 			targets[targetPath] = target
@@ -107,8 +107,6 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 
 type filesByPath []holo.Entity
 
-func (f filesByPath) Len() int { return len(f) }
-func (f filesByPath) Less(i, j int) bool {
-	return f[i].(*FilesEntity).relTargetPath < f[j].(*FilesEntity).relTargetPath
-}
-func (f filesByPath) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
+func (f filesByPath) Len() int           { return len(f) }
+func (f filesByPath) Less(i, j int) bool { return f[i].EntityID() < f[j].EntityID() }
+func (f filesByPath) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }

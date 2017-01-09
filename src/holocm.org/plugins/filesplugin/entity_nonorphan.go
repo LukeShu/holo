@@ -37,8 +37,8 @@ import (
 // in the target path with the correct file metadata.
 func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo.ApplyResult, error) {
 	// determine the related paths
-	targetPath := target.PathIn(target.plugin.Runtime.RootDirPath)
-	targetBasePath := target.PathIn(target.plugin.Runtime.StateDirPath + "/base")
+	targetPath := filepath.Join(target.plugin.Runtime.RootDirPath, target.relPath)
+	targetBasePath := filepath.Join(target.plugin.Runtime.StateDirPath+"/base", target.relPath)
 
 	// step 1: will only apply targets if:
 	//
@@ -100,7 +100,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 
 	//load the last provisioned version
 	var lastProvisionedBuffer *fileutil.FileBuffer
-	lastProvisionedPath := target.PathIn(target.plugin.Runtime.StateDirPath + "/provisioned")
+	lastProvisionedPath := filepath.Join(target.plugin.Runtime.StateDirPath+"/provisioned", target.relPath)
 	if fileutil.IsManageableFile(lastProvisionedPath) {
 		lastProvisionedBuffer, err = fileutil.NewFileBuffer(lastProvisionedPath, targetPath)
 		if err != nil {
