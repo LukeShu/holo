@@ -38,26 +38,15 @@ type FilesEntity struct {
 	plugin    FilesPlugin
 }
 
-// NewEntity creates a Entity instance for which a path is known.
+// NewFilesEntity creates a FilesEntity instance for which a path is
+// known.
 //
 //    entity := p.NewEntity("etc/locale.conf")
-func (p FilesPlugin) NewEntity(relPath string) *FilesEntity {
+func (p FilesPlugin) NewFilesEntity(relPath string) *FilesEntity {
 	return &FilesEntity{
 		relPath: relPath,
 		plugin:  p,
 	}
-}
-
-// PathIn returns the path to this entity relative to the given
-// directory.
-//
-//    var (
-//        targetPath      = entity.pathIn(entity.plugin.Runtime.RootDirPath)                   // e.g. "/etc/foo.conf"
-//        basePath        = entity.pathIn(entity.plugin.Runtime.StateDirPath + "/base")        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
-//        provisionedPath = entity.pathIn(entity.plugin.Runtime.StateDirPath + "/provisioned") // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
-//    )
-func (entity *FilesEntity) PathIn(directory string) string {
-	return filepath.Join(directory, entity.relPath)
 }
 
 // AddResource registers a new resource in this FilesEntity instance.
@@ -74,7 +63,7 @@ func (entity *FilesEntity) Resources() []Resource {
 
 // EntityID returns the entity ID for this entity.
 func (entity *FilesEntity) EntityID() string {
-	return "file:" + entity.PathIn("/")
+	return "file:" + filepath.Join("/", entity.relPath)
 }
 
 // EntityAction returns a verb describing the action to be taken when
@@ -106,9 +95,9 @@ func (entity *FilesEntity) EntitySource() []string {
 func (entity *FilesEntity) EntityUserInfo() (r []holo.KV) {
 	if len(entity.resources) == 0 {
 		_, strategy, _ := entity.scanOrphan()
-		r = append(r, holo.KV{strategy, entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base")})
+		r = append(r, holo.KV{strategy, filepath.Join(entity.plugin.Runtime.StateDirPath, "base", entity.relPath)})
 	} else {
-		r = append(r, holo.KV{"store at", entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base")})
+		r = append(r, holo.KV{"store at", filepath.Join(entity.plugin.Runtime.StateDirPath, "base", entity.relPath)})
 		for _, resource := range entity.Resources() {
 			r = append(r, holo.KV{resource.ApplicationStrategy(), resource.Path()})
 		}

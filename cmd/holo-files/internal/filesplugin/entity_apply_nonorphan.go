@@ -183,24 +183,24 @@ func (entity *FilesEntity) applyNonOrphan(withForce bool, stdout, stderr io.Writ
 //GetBase return the package manager-supplied base version of the
 //entity, as recorded the last time it was provisioned.
 func (entity *FilesEntity) GetBase() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base"))
+	return fileutil.NewFileBuffer(filepath.Join(entity.plugin.Runtime.StateDirPath, "base", entity.relPath))
 }
 
 //GetProvisioned returns the recorded last-provisioned state of the
 //entity.
 func (entity *FilesEntity) GetProvisioned() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.Runtime.StateDirPath + "/provisioned"))
+	return fileutil.NewFileBuffer(filepath.Join(entity.plugin.Runtime.StateDirPath, "provisioned", entity.relPath))
 }
 
 //GetCurrent returns the current version of the entity.
 func (entity *FilesEntity) GetCurrent() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.Runtime.RootDirPath))
+	return fileutil.NewFileBuffer(filepath.Join(entity.plugin.Runtime.RootDirPath, entity.relPath))
 }
 
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
 func (entity *FilesEntity) GetNewBase(stdout, stderr io.Writer) (path string, buf fileutil.FileBuffer, err error) {
-	realPath, path, err := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).FindUpdatedTargetBase(entity.PathIn(entity.plugin.Runtime.RootDirPath))
+	realPath, path, err := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).FindUpdatedTargetBase(filepath.Join(entity.plugin.Runtime.RootDirPath, entity.relPath))
 	if err != nil {
 		return
 	}
@@ -227,7 +227,7 @@ func (entity *FilesEntity) GetDesired(base fileutil.FileBuffer, stdout, stderr i
 	// load the base into a buffer as the start for the
 	// application algorithm
 	buffer := base
-	buffer.Path = entity.PathIn(entity.plugin.Runtime.RootDirPath)
+	buffer.Path = filepath.Join(entity.plugin.Runtime.RootDirPath, entity.relPath)
 
 	// apply all the applicable resources in order
 	var err error

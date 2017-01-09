@@ -63,7 +63,7 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		resource := p.NewResource(resourcePath)
 		entityPath := resource.EntityPath()
 		if entities[entityPath] == nil {
-			entities[entityPath] = p.NewEntity(entityPath)
+			entities[entityPath] = p.NewFilesEntity(entityPath)
 		}
 		entities[entityPath].AddResource(resource)
 		return nil
@@ -71,26 +71,26 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 
 	//walk over the base directory to find orphaned entities
 	baseDir := p.Runtime.StateDirPath + "/base"
-	filepath.Walk(baseDir, func(basePath string, baseFileInfo os.FileInfo, err error) error {
+	filepath.Walk(baseDir, func(filePath string, fileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !fileutil.IsManageableFileInfo(baseFileInfo) {
+		if !fileutil.IsManageableFileInfo(fileInfo) {
 			return nil
 		}
 		// don't consider baseDir itself to be a base (it
 		// might have passed the IsManageableFileInfo check
 		// because it might be a symlink)
-		if basePath == baseDir {
+		if filePath == baseDir {
 			return nil
 		}
 
 		//ensure that there is an Entity for this base
 		//(it could be orphaned)
-		entityPath, _ := filepath.Rel(baseDir, basePath)
-		entity := p.NewEntity(entityPath)
+		entityPath, _ := filepath.Rel(baseDir, filePath)
+		entity := p.NewFilesEntity(entityPath)
 		if entities[entityPath] == nil {
 			entities[entityPath] = entity
 		}

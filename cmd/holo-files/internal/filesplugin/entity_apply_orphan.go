@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
@@ -32,7 +33,7 @@ import (
 // assesses the situation. This logic is grouped in one function
 // because it's used by both `holo scan` and `holo apply`.
 func (entity *FilesEntity) scanOrphan() (targetPath, strategy, assessment string) {
-	targetPath = entity.PathIn(entity.plugin.Runtime.RootDirPath)
+	targetPath = filepath.Join(entity.plugin.Runtime.RootDirPath, entity.relPath)
 	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
@@ -42,7 +43,7 @@ func (entity *FilesEntity) scanOrphan() (targetPath, strategy, assessment string
 // applyOrphan cleans up an orphaned entity.
 func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 	_, strategy, _ := entity.scanOrphan()
-	basePath := entity.PathIn(entity.plugin.Runtime.StateDirPath + "/base")
+	basePath := filepath.Join(entity.plugin.Runtime.StateDirPath, "base", entity.relPath)
 
 	var errs []error
 	appendError := func(err error) {
