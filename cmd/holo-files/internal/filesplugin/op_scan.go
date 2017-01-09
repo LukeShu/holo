@@ -35,15 +35,17 @@ import (
 // entities are guaranteed to have the concrete type "*FileEntity".
 // The entities are sorted by path.
 func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
-	//walk over the resource directory to find resources (and thus the corresponding entities)
+	// walk over the resource directory to find resources (and
+	// thus the corresponding entities)
 	entities := make(map[string]*FilesEntity)
 	resourceDir := p.Runtime.ResourceDirPath
 	filepath.Walk(resourceDir, func(resourcePath string, resourceFileInfo os.FileInfo, err error) error {
-		//skip over unaccessible stuff
+		// skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
-		//only look at manageable files (regular files or symlinks)
+		// only look at manageable files (regular files or
+		// symlinks)
 		if !fileutil.IsManageableFileInfo(resourceFileInfo) {
 			return nil
 		}
@@ -53,14 +55,15 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		if resourcePath == resourceDir {
 			return nil
 		}
-		//only look at files within subdirectories (files in the resource directory
-		//itself are skipped)
+		// only look at files within subdirectories (files in
+		// the resource directory itself are skipped)
 		relPath, _ := filepath.Rel(resourceDir, resourcePath)
 		if !strings.ContainsRune(relPath, filepath.Separator) {
 			return nil
 		}
 
-		//create new FilesEntity if necessary and store the resource in it
+		// create new FilesEntity if necessary and store the
+		// resource in it
 		resource := p.NewResource(resourcePath)
 		entityPath := resource.EntityPath()
 		if entities[entityPath] == nil {
@@ -70,14 +73,15 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		return nil
 	})
 
-	//walk over the base directory to find orphaned entities
+	// walk over the base directory to find orphaned entities
 	baseDir := p.Runtime.StateDirPath + "/base"
 	filepath.Walk(baseDir, func(filePath string, fileInfo os.FileInfo, err error) error {
-		//skip over unaccessible stuff
+		// skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
-		//only look at manageable files (regular files or symlinks)
+		// only look at manageable files (regular files or
+		// symlinks)
 		if !fileutil.IsManageableFileInfo(fileInfo) {
 			return nil
 		}
@@ -98,7 +102,7 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		return nil
 	})
 
-	//flatten result into list
+	// flatten result into list
 	result := make([]holo.Entity, 0, len(entities))
 	for _, entity := range entities {
 		result = append(result, entity)
