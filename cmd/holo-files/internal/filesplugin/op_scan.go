@@ -33,6 +33,7 @@ import (
 
 // HoloScan returns a slice of all the FilesEntity entities.  The
 // entities are guaranteed to have the concrete type "*FileEntity".
+// The entities are sorted by path.
 func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 	//walk over the resource directory to find resources (and thus the corresponding entities)
 	entities := make(map[string]*FilesEntity)
@@ -87,8 +88,8 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 			return nil
 		}
 
-		//ensure that there is an Entity for this base
-		//(it could be orphaned)
+		// ensure that there is an Entity for this base
+		// (it could be orphaned)
 		entityPath, _ := filepath.Rel(baseDir, filePath)
 		entity := p.NewFilesEntity(entityPath)
 		if entities[entityPath] == nil {

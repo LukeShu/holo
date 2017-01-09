@@ -62,9 +62,9 @@ func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 
 	switch strategy {
 	case "delete":
-		//if the package management left behind additional cleanup targets
-		//(most likely a backup of our custom configuration), we can delete
-		//these too
+		// if the package management left behind additional
+		// cleanup targets (most likely a backup of our custom
+		// configuration), we can delete these too
 		cleanupTargets := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).AdditionalCleanupTargets(current.Path)
 		for _, path := range cleanupTargets {
 			otherFile, err := fileutil.NewFileBuffer(path)
