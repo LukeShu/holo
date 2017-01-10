@@ -39,8 +39,8 @@ func (target *TargetFile) scanOrphanedTargetBase() (theTargetPath, strategy, ass
 	return targetPath, "delete", "target was deleted"
 }
 
-//handleOrphanedTargetBase cleans up an orphaned target base.
-func (target *TargetFile) handleOrphanedTargetBase() []error {
+//applyOrphan cleans up an orphaned target base.
+func (target *TargetFile) applyOrphan() []error {
 	targetPath, strategy, _ := target.scanOrphanedTargetBase()
 	targetBasePath := target.PathIn(common.TargetBaseDirectory())
 

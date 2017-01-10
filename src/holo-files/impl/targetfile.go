@@ -104,7 +104,7 @@ var ErrNeedForceToRestore = errors.New("NeedForceToRestore")
 //Apply implements the common.Entity interface.
 func (target *TargetFile) Apply(withForce bool) (skipReport, needForceToOverwrite, needForceToRestore bool) {
 	if target.orphaned {
-		errs := target.handleOrphanedTargetBase()
+		errs := target.applyOrphan()
 		skipReport = false
 		needForceToOverwrite = false
 		needForceToRestore = false
@@ -114,7 +114,7 @@ func (target *TargetFile) Apply(withForce bool) (skipReport, needForceToOverwrit
 		}
 	} else {
 		var err error
-		skipReport, err = apply(target, withForce)
+		skipReport, err = target.applyNonOrphan(withForce)
 
 		//special cases for errors that signal command messages
 		needForceToOverwrite = err == ErrNeedForceToOverwrite
