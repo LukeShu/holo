@@ -84,7 +84,9 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		return nil, err
 	}
 	if updatedTBPath != "" {
-		//an updated stock configuration is available at updatedTBPath
+		// an updated stock configuration is available at
+		// updatedTBPath (but show it to the user as
+		// reportedTBPath).
 		fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
 		err := fileutil.CopyFile(updatedTBPath, targetBasePath)
 		if err != nil {
@@ -93,10 +95,11 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		_ = os.Remove(updatedTBPath) //this can fail silently
 	}
 
-	//step 4: apply the repo files *if* the version at targetPath is the one
-	//installed by the package (which can be found at targetBasePath); complain if
-	//the user made any changes to config files governed by holo (this check is
-	//overridden by the --force option)
+	// step 4: apply the repo files *iff* the version at
+	// targetPath is the one installed by the package (which can
+	// be found at targetBasePath); complain if the user made any
+	// changes to config files governed by holo (this check is
+	// overridden by the --force option)
 
 	//load the last provisioned version
 	var lastProvisionedBuffer *fileutil.FileBuffer
