@@ -48,7 +48,7 @@ func main() {
 	//a command word must be given as first argument
 	if len(os.Args) < 2 {
 		commandHelp()
-		return
+		impl.Exit(0)
 	}
 
 	//check that it is a known command word
@@ -68,18 +68,17 @@ func main() {
 		}
 	case "version", "--version":
 		fmt.Println(version)
-		return
+		impl.Exit(0)
 	default:
 		commandHelp()
-		return
+		impl.Exit(0)
 	}
 
 	//load configuration
 	config := impl.ReadConfiguration()
 	if config == nil {
 		//some fatal error occurred - it was already reported, so just exit
-		impl.CleanupRuntimeCache()
-		os.Exit(255)
+		impl.Exit(255)
 	}
 
 	//parse command line
@@ -103,8 +102,7 @@ func main() {
 		pluginEntities := plugin.Scan()
 		if pluginEntities == nil {
 			//some fatal error occurred - it was already reported, so just exit
-			impl.CleanupRuntimeCache()
-			os.Exit(255)
+			impl.Exit(255)
 		}
 		entities = append(entities, pluginEntities...)
 		impl.Stdout.EndParagraph()
@@ -140,8 +138,7 @@ func main() {
 		}
 	}
 	if hasUnrecognizedArgs {
-		impl.CleanupRuntimeCache()
-		os.Exit(255)
+		impl.Exit(255)
 	}
 
 	//build a lookup hash for all known entities (for argument parsing)
@@ -153,7 +150,7 @@ func main() {
 	//execute command
 	command(entities, options)
 
-	impl.CleanupRuntimeCache()
+	impl.Exit(0)
 }
 
 func commandHelp() {

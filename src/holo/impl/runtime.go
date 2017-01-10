@@ -64,7 +64,8 @@ func CachePath() string {
 	return cachePath
 }
 
-//CleanupRuntimeCache tries to cleanup the CachePath().
-func CleanupRuntimeCache() {
+//Exit tries to cleanup the CachePath(), then exits.
+func Exit(code int) {
 	_ = os.RemoveAll(cachePath) //fail silently
+	os.Exit(code)
 }
