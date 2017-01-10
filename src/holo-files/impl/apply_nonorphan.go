@@ -30,11 +30,11 @@ import (
 	"../platform"
 )
 
-//Apply performs the complete application algorithm for the given TargetFile.
+//applyNonOrphan performs the complete application algorithm for the given TargetFile.
 //This includes taking a copy of the target base if necessary, applying all
 //repository entries, and saving the result in the target path with the correct
 //file metadata.
-func apply(target *TargetFile, withForce bool) (skipReport bool, err error) {
+func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err error) {
 	//determine the related paths
 	targetPath := target.PathIn(common.TargetDirectory())
 	targetBasePath := target.PathIn(common.TargetBaseDirectory())
