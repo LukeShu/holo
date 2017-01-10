@@ -62,8 +62,8 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		}
 	}
 
-	//step 2: if we don't have a target base yet, the file at targetPath *is*
-	//the targetBase which we have to copy now
+	// step 2: if we don't have a target base yet, the file at
+	// targetPath *is* the targetBase which we have to copy now
 	if !fileutil.IsManageableFile(targetBasePath) {
 		targetBaseDir := filepath.Dir(targetBasePath)
 		err := os.MkdirAll(targetBaseDir, 0755)
@@ -77,8 +77,8 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		}
 	}
 
-	//step 3: check if a system update installed a new version of the stock
-	//configuration
+	// step 3: check if a system update installed a new version of
+	// the stock configuration
 	updatedTBPath, reportedTBPath, err := GetPackageManager(stdout, stderr).FindUpdatedTargetBase(targetPath)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		if err != nil {
 			return nil, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
 		}
-		_ = os.Remove(updatedTBPath) //this can fail silently
+		_ = os.Remove(updatedTBPath) // this can fail silently
 	}
 
 	// step 4: apply the repo files *iff* the version at
@@ -101,7 +101,7 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	// changes to config files governed by holo (this check is
 	// overridden by the --force option)
 
-	//load the last provisioned version
+	// load the last provisioned version
 	var lastProvisionedBuffer *fileutil.FileBuffer
 	lastProvisionedPath := filepath.Join(target.plugin.Runtime.StateDirPath+"/provisioned", target.relPath)
 	if fileutil.IsManageableFile(lastProvisionedPath) {
@@ -111,8 +111,8 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		}
 	}
 
-	//compare it against the target version (which must exist at this point
-	//unless we are using --force)
+	// compare it against the target version (which must exist at
+	// this point unless we are using --force)
 	if targetExists && lastProvisionedBuffer != nil {
 		targetBuffer, err := fileutil.NewFileBuffer(targetPath, targetPath)
 		if err != nil {
@@ -138,8 +138,9 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		}
 	}
 
-	//load the target base into a buffer as the start for the application
-	//algorithm, unless it will be discarded by an application step
+	// load the target base into a buffer as the start for the
+	// application algorithm, unless it will be discarded by an
+	// application step
 	var buffer *fileutil.FileBuffer
 	if firstStep == -1 {
 		buffer, err = fileutil.NewFileBuffer(targetBasePath, targetPath)
@@ -150,8 +151,8 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		buffer = fileutil.NewFileBufferFromContents([]byte(nil), targetPath)
 	}
 
-	//apply all the applicable repo files in order (starting from the first one
-	//that matters)
+	// apply all the applicable repo files in order (starting from
+	// the first one that matters)
 	if firstStep > 0 {
 		repoEntries = repoEntries[firstStep:]
 	}
@@ -162,16 +163,15 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		}
 	}
 
-	//don't do anything more if nothing has changed and the target file has not been touched
-	if !needForcefulReprovision && lastProvisionedBuffer != nil {
-		if buffer.EqualTo(lastProvisionedBuffer) {
-			//since we did not do anything, don't report this
-			return holo.ApplyAlreadyApplied, nil
-		}
+	// don't do anything more if nothing has changed and the
+	// target file has not been touched
+	if !needForcefulReprovision && lastProvisionedBuffer != nil && buffer.EqualTo(lastProvisionedBuffer) {
+		// since we did not do anything, don't report this
+		return holo.ApplyAlreadyApplied, nil
 	}
 
-	//save a copy of the provisioned config file to check for manual
-	//modifications in the next Apply() run
+	// save a copy of the provisioned config file to check for
+	// manual modifications in the next Apply() run
 	provisionedDir := filepath.Dir(lastProvisionedPath)
 	err = os.MkdirAll(provisionedDir, 0755)
 	if err != nil {
@@ -186,8 +186,8 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		return nil, err
 	}
 
-	//write the result buffer to the target location and copy
-	//owners/permissions from target base to target file
+	// write the result buffer to the target location and copy
+	// owners/permissions from target base to target file
 	newTargetPath := targetPath + ".holonew"
 	err = buffer.Write(newTargetPath)
 	if err != nil {
@@ -197,8 +197,8 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	if err != nil {
 		return nil, err
 	}
-	//move $target.holonew -> $target atomically (to ensure that there is
-	//always a valid file at $target)
+	// move $target.holonew -> $target atomically (to ensure that
+	// there is always a valid file at $target)
 	err = os.Rename(newTargetPath, targetPath)
 	if err != nil {
 		return nil, err
