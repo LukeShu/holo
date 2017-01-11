@@ -23,6 +23,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"holocm.org/cmd/holo/impl"
@@ -38,31 +39,43 @@ const (
 func main() {
 	//a command word must be given as first argument
 	if len(os.Args) < 2 {
-		commandHelp()
-		return
+		help(os.Stderr)
+		Exit(2)
 	}
 
 	//check that it is a known command word
-	var command func([]*impl.EntityHandle, map[int]bool)
+	var command func([]*impl.EntityHandle)
 	knownOpts := make(map[string]int)
+	options := make(map[int]bool)
 	switch os.Args[1] {
 	case "apply":
-		command = commandApply
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
+		command = func(e []*impl.EntityHandle) {
+			if !AcquireLockfile() {
+				Exit(255)
+			}
+			defer ReleaseLockfile()
+			impl.Apply(e, options[optionApplyForce])
+		}
 	case "diff":
-		command = commandDiff
+		command = impl.Diff
 	case "scan":
-		command = commandScan
 		knownOpts = map[string]int{
 			"-s": optionScanShort, "--short": optionScanShort,
 			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
 		}
+		command = func(e []*impl.EntityHandle) {
+			impl.Scan(e, options[optionScanPorcelain], options[optionScanShort])
+		}
 	case "version", "--version":
 		fmt.Println(version)
-		return
+		Exit(0)
+	case "help", "--help":
+		help(os.Stdout)
+		Exit(0)
 	default:
-		commandHelp()
-		return
+		help(os.Stderr)
+		Exit(2)
 	}
 
 	//load configuration
@@ -75,7 +88,6 @@ func main() {
 	// parse command line -- classify each argument as either a
 	// selector-string or an option-flag.
 	args := os.Args[2:]
-	options := make(map[int]bool)
 	selectors := make(map[string]bool)
 	for _, arg := range args {
 		// either it's a known option for this subcommand...
@@ -109,60 +121,18 @@ func main() {
 	}
 
 	//execute command
-	command(entities, options)
+	command(entities)
 
 	Exit(0)
 }
 
-func commandHelp() {
+func help(w io.Writer) {
 	program := os.Args[0]
-	fmt.Printf("Usage: %s <operation> [...]\nOperations:\n", program)
-	fmt.Printf("    %s apply [-f|--force] [selector ...]\n", program)
-	fmt.Printf("    %s diff [selector ...]\n", program)
-	fmt.Printf("    %s scan [-s|--short|-p|--porcelain] [selector ...]\n", program)
-	fmt.Printf("\nSee `man 8 holo` for details.\n")
-}
-
-func commandApply(entities []*impl.EntityHandle, options map[int]bool) {
-	if !AcquireLockfile() {
-		Exit(255)
-	}
-	defer ReleaseLockfile()
-	withForce := options[optionApplyForce]
-	for _, entity := range entities {
-		entity.Apply(withForce)
-
-		os.Stderr.Sync()
-		output.Stdout.EndParagraph()
-		os.Stdout.Sync()
-	}
-}
-
-func commandScan(entities []*impl.EntityHandle, options map[int]bool) {
-	isPorcelain := options[optionScanPorcelain]
-	isShort := options[optionScanShort]
-	for _, entity := range entities {
-		switch {
-		case isPorcelain:
-			entity.PrintScanReport()
-		case isShort:
-			fmt.Println(entity.Entity.EntityID())
-		default:
-			entity.PrintReport(false)
-		}
-	}
-}
-
-func commandDiff(entities []*impl.EntityHandle, options map[int]bool) {
-	for _, entity := range entities {
-		dat, err := entity.RenderDiff()
-		if err != nil {
-			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.Entity.EntityID(), err.Error())
-		}
-		os.Stdout.Write(dat)
-
-		os.Stderr.Sync()
-		output.Stdout.EndParagraph()
-		os.Stdout.Sync()
-	}
+	fmt.Fprintf(w, "Usage: %s <operation> [...]\nOperations:\n", program)
+	fmt.Fprintf(w, "    %s apply [-f|--force] [selector ...]\n", program)
+	fmt.Fprintf(w, "    %s diff [selector ...]\n", program)
+	fmt.Fprintf(w, "    %s scan [-s|--short|-p|--porcelain] [selector ...]\n", program)
+	fmt.Fprintf(w, "    %s --help\n", program)
+	fmt.Fprintf(w, "    %s --version\n", program)
+	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
 }
