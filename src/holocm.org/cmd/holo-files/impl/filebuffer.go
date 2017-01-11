@@ -27,7 +27,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"../common"
+	"holocm.org/cmd/holo-files/common"
 )
 
 //FileBuffer represents the contents of a file. It is used in holo.Apply() as

@@ -27,7 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"../common"
+	"holocm.org/cmd/holo-files/common"
 )
 
 //TargetFile represents a configuration file that can be provisioned by Holo.

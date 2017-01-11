@@ -26,7 +26,7 @@ import (
 	"sort"
 	"strings"
 
-	"../common"
+	"holocm.org/cmd/holo-files/common"
 )
 
 //ScanRepo returns a slice of all the TargetFile entities.

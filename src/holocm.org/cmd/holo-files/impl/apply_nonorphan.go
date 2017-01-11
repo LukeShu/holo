@@ -26,8 +26,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"../common"
-	"../platform"
+	"holocm.org/cmd/holo-files/common"
+	"holocm.org/cmd/holo-files/platform"
 )
 
 //applyNonOrphan performs the complete application algorithm for the given TargetFile.

@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"../common"
+	"holocm.org/cmd/holo-files/common"
 )
 
 //RepoFile represents a single file in the configuration repository. The string
