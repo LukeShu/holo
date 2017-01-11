@@ -41,13 +41,13 @@ func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error
 	return plugin, nil
 }
 
-func GetPlugins(config []PluginConfig) []*PluginHandle {
+func (r *RuntimeManager) GetPlugins(config []PluginConfig) []*PluginHandle {
 	plugins := []*PluginHandle{} // non nil
 	for _, pluginConfig := range config {
 		pluginHandle, err := NewPluginHandle(
 			pluginConfig.ID,
 			pluginConfig.Arg,
-			NewRuntime(pluginConfig.ID),
+			r.NewRuntime(pluginConfig.ID),
 			GetPlugin)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -67,16 +67,6 @@ func GetPlugins(config []PluginConfig) []*PluginHandle {
 			}
 		}
 		plugins = append(plugins, pluginHandle)
-	}
-
-	hasError := false
-	for _, plugin := range plugins {
-		if !SetupRuntime(plugin.Runtime) {
-			hasError = true
-		}
-	}
-	if hasError {
-		return nil
 	}
 
 	return plugins

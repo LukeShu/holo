@@ -22,6 +22,7 @@ package impl
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/holocm/holo/cmd/holo/internal/output"
@@ -39,6 +40,15 @@ type PluginGetter func(id string, arg *string, runtime holo.Runtime) (holo.Plugi
 
 func NewPluginHandle(id string, arg *string, runtime holo.Runtime, getPlugin PluginGetter) (*PluginHandle, error) {
 	plugin, err := getPlugin(id, arg, runtime)
+	if err != nil {
+		return nil, err
+	}
+
+	err = checkRuntime(runtime)
+	if err != nil {
+		return nil, err
+	}
+
 	handle := &PluginHandle{
 		ID:      id,
 		Plugin:  plugin,
@@ -46,11 +56,11 @@ func NewPluginHandle(id string, arg *string, runtime holo.Runtime, getPlugin Plu
 		Info:    nil,
 	}
 
-	// grab/cache metadata
 	handle.Info = handle.Plugin.HoloInfo()
 	if handle.Info == nil {
 		return nil, fmt.Errorf("plugin holo-%s: \"info\" operation failed", handle.ID)
 	}
+
 	err = checkVersion(handle, runtime.APIVersion)
 	if err != nil {
 		return nil, err
@@ -73,6 +83,19 @@ func checkVersion(handle *PluginHandle, version int) error {
 			"plugin holo-%s is incompatible with this Holo (plugin min: %d, plugin max: %d, Holo: %d)",
 			handle.ID, minVersion, maxVersion, version,
 		)
+	}
+	return nil
+}
+
+func checkRuntime(r holo.Runtime) error {
+	if _, err := os.Stat(r.ResourceDirPath + "/"); err != nil {
+		return fmt.Errorf("Resource directory cannot be opened: %q: %v", r.ResourceDirPath, err)
+	}
+	if err := os.MkdirAll(r.StateDirPath, 0755); err != nil {
+		return fmt.Errorf("State directory cannot be created: %q: %v", r.StateDirPath, err)
+	}
+	if err := os.MkdirAll(r.CacheDirPath, 0755); err != nil {
+		return fmt.Errorf("Cache directory cannot be created: %q: %v", r.CacheDirPath, err)
 	}
 	return nil
 }

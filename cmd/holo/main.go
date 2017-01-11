@@ -33,6 +33,12 @@ import (
 //this is populated at compile-time, see Makefile
 var version = "unknown"
 
+const (
+	optionApplyForce = iota
+	optionScanShort
+	optionScanPorcelain
+)
+
 // Main is the main entry point, but returns the exit code rather than
 // calling os.Exit().  This distinction is useful for monobinary and
 // testing purposes.
@@ -48,16 +54,16 @@ func Main() (exitCode int) {
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
-		knownOpts = map[string]int{"-f": impl.OptionApplyForce, "--force": impl.OptionApplyForce}
-		command = impl.Apply
+		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
+		command = impl.CommandApply
 	case "diff":
-		command = impl.Diff
+		command = impl.CommandDiff
 	case "scan":
 		knownOpts = map[string]int{
-			"-s": impl.OptionScanShort, "--short": impl.OptionScanShort,
-			"-p": impl.OptionScanPorcelain, "--porcelain": impl.OptionScanPorcelain,
+			"-s": optionScanShort, "--short": optionScanShort,
+			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
 		}
-		command = impl.Scan
+		command = impl.CommandScan
 	case "version", "--version":
 		fmt.Println(version)
 		return 0
@@ -81,7 +87,13 @@ func Main() (exitCode int) {
 			output.Errorf(output.Stderr, "%s", err.Error())
 			return 255
 		}
-		plugins := impl.GetPlugins(config.Plugins)
+
+		// load plugins
+		runtimeManager, err := impl.NewRuntimeManager(impl.RootDirectory())
+		if err != nil {
+			return 255
+		}
+		plugins := runtimeManager.GetPlugins(config.Plugins)
 		if plugins == nil {
 			// some fatal error occurred - it was already
 			// reported, so just exit

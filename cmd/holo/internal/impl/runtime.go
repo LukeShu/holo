@@ -29,58 +29,33 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-var (
-	rootDir   string
-	cachePath string
-)
+type RuntimeManager struct {
+	rootDir  string
+	cacheDir string
+}
 
-//WithCacheDirectory executes the worker function after having set up a cache
-//directory, and ensures that the cache directory is cleaned up afterwards.
-func WithCacheDirectory(worker func() (exitCode int)) (exitCode int) {
-	var err error
-	cachePath, err = ioutil.TempDir(os.TempDir(), "holo.")
+func NewRuntimeManager(rootDir string) (*RuntimeManager, error) {
+	// TODO(lukeshu): Consider inspecting os.TempDir() to see if
+	// it is below rootDir.  I don't think it's important to do so
+	// because ioutil.TempDir() avoids conflicts.
+	cacheDir, err := ioutil.TempDir(os.TempDir(), "holo.")
 	if err != nil {
-		output.Errorf(output.Stderr, err.Error())
-		return 255
+		return nil, err
 	}
-
-	//ensure that the cache is removed even if worker() panics
-	defer func() {
-		_ = os.RemoveAll(cachePath) //failure to cleanup is non-fatal
-		cachePath = ""
-	}()
-
-	return worker()
+	return &RuntimeManager{rootDir: rootDir, cacheDir: cacheDir}, nil
 }
 
-//CachePath returns the path below which plugin cache directories can be allocated.
-func CachePath() string {
-	if cachePath == "" {
-		panic("Tried to use cachePath outside WithCacheDirectory() call!")
-	}
-	return cachePath
+func (r *RuntimeManager) Close() {
+	_ = os.RemoveAll(r.cacheDir) // fail silently
 }
 
-func init() {
-	rootDir = os.Getenv("HOLO_ROOT_DIR")
-	if rootDir == "" {
-		rootDir = "/"
-	}
-}
-
-// RootDirectory returns the environment variable $HOLO_ROOT_DIR, or
-// else the default value "/".
-func RootDirectory() string {
-	return rootDir
-}
-
-func NewRuntime(id string) holo.Runtime {
+func (r *RuntimeManager) NewRuntime(id string) holo.Runtime {
 	return holo.Runtime{
 		APIVersion:      3,
-		RootDirPath:     RootDirectory(),
-		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(CachePath(), id),
-		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
+		RootDirPath:     r.rootDir,
+		ResourceDirPath: filepath.Join(r.rootDir, "usr/share/holo", id),
+		CacheDirPath:    filepath.Join(r.cacheDir, id),
+		StateDirPath:    filepath.Join(r.rootDir, "var/lib/holo", id),
 	}
 }
 
