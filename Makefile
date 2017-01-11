@@ -2,12 +2,13 @@ default: bin/holo bin/holo-files
 default: man/holorc.5 man/holo-plugin-interface.7 man/holo-test.7 man/holo.8 man/holo-files.8
 .PHONY: default
 
-VERSION := $(shell ./util/find_version.sh)
-
 GO_BUILDFLAGS :=
-GO_LDFLAGS    := -s -w -X main.version=$(VERSION)
+GO_LDFLAGS    := -s -w
 
-%/holo %/holo-files: FORCE
+src/holocm.org/cmd/holo/version.go: FORCE
+	printf 'package main\n\nconst version = "%s"\n' "$$( ./util/find_version.sh)" | util/write-ifchanged $@
+
+%/holo %/holo-files: FORCE src/holocm.org/cmd/holo/version.go
 	GOPATH=$(dir $(abspath $*)) go install $(GO_BUILDFLAGS) --ldflags '$(GO_LDFLAGS)' holocm.org/cmd/holo holocm.org/cmd/holo-files
 
 man:

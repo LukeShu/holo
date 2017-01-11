@@ -27,9 +27,6 @@ import (
 	"holocm.org/cmd/holo/impl"
 )
 
-//this is populated at compile-time, see Makefile
-var version string
-
 const (
 	optionApplyForce = iota
 	optionScanShort
