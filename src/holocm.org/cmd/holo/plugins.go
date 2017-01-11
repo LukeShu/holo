@@ -42,7 +42,7 @@ func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error
 	return plugin, nil
 }
 
-func GetPlugins(config []PluginConfig) []*impl.PluginHandle {
+func GetPlugins(config []impl.PluginConfig) []*impl.PluginHandle {
 	plugins := []*impl.PluginHandle{} // non nil
 	for _, pluginConfig := range config {
 		pluginHandle, err := impl.NewPluginHandle(

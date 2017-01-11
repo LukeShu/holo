@@ -79,12 +79,12 @@ func main() {
 	}
 
 	// load configuration
-	configReader, err := NewConfigReader(RootDirectory())
+	configReader, err := impl.NewConfigReader(RootDirectory())
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
 		Exit(255)
 	}
-	config, err := ReadConfig(configReader)
+	config, err := impl.ReadConfig(configReader)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
 		Exit(255)
