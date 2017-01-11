@@ -44,7 +44,7 @@ const (
 
 var (
 	rootDir        string
-	runtimeManager *RuntimeManager
+	runtimeManager *impl.RuntimeManager
 )
 
 // Main is the main entry point, but returns the exit code rather than
@@ -68,21 +68,25 @@ func Main() (exitCode int) {
 	switch os.Args[1] {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
-		command = func(e []*impl.EntityHandle) {
-			if !AcquirePidfile(filepath.Join(rootDir, "run/holo.pid")) {
-				exit(255)
+		command = func(e []*impl.EntityHandle, options map[int]bool) int {
+			if !impl.AcquirePidfile(filepath.Join(rootDir, "run/holo.pid")) {
+				return 255
 			}
-			impl.CommandApply(e, options[optionApplyForce])
-			ReleasePidfile()
+			defer impl.ReleasePidfile()
+			return impl.CommandApply(e, options[optionApplyForce])
 		}
 	case "diff":
-		command = impl.CommandDiff
+		command = func(e []*impl.EntityHandle, options map[int]bool) int {
+			return impl.CommandDiff(e)
+		}
 	case "scan":
 		knownOpts = map[string]int{
 			"-s": optionScanShort, "--short": optionScanShort,
 			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
 		}
-		command = impl.CommandScan
+		command = func(e []*impl.EntityHandle, options map[int]bool) int {
+			return impl.CommandScan(e, options[optionScanPorcelain], options[optionScanShort])
+		}
 	case "version", "--version":
 		fmt.Println(version)
 		return 0
@@ -94,7 +98,7 @@ func Main() (exitCode int) {
 		return 2
 	}
 
-	return impl.WithCacheDirectory(func() (exitCode int) {
+	if true {
 		// load configuration
 		configReader, err := impl.NewConfigReader(rootDir)
 		if err != nil {
@@ -108,10 +112,11 @@ func Main() (exitCode int) {
 		}
 
 		// load plugins
-		runtimeManager, err = impl.NewRuntimeManager(rootDir)
+		runtimeManager, err = impl.NewRuntimeManager(rootDir, GetPlugin)
 		if err != nil {
 			return 255
 		}
+		defer runtimeManager.Close()
 		plugins := runtimeManager.GetPlugins(config.Plugins)
 		if plugins == nil {
 			// some fatal error occurred - it was already
@@ -157,8 +162,8 @@ func Main() (exitCode int) {
 
 		//execute command
 		return command(entities, options)
-
-	}) //end of WithCacheDirectory
+	}
+	panic("not reached")
 }
 
 func help(w io.Writer) {

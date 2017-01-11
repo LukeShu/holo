@@ -30,11 +30,12 @@ import (
 )
 
 type RuntimeManager struct {
-	rootDir  string
-	cacheDir string
+	rootDir   string
+	cacheDir  string
+	getPlugin PluginGetter
 }
 
-func NewRuntimeManager(rootDir string) (*RuntimeManager, error) {
+func NewRuntimeManager(rootDir string, getPlugin PluginGetter) (*RuntimeManager, error) {
 	// TODO(lukeshu): Consider inspecting os.TempDir() to see if
 	// it is below rootDir.  I don't think it's important to do so
 	// because ioutil.TempDir() avoids conflicts.
@@ -42,7 +43,11 @@ func NewRuntimeManager(rootDir string) (*RuntimeManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &RuntimeManager{rootDir: rootDir, cacheDir: cacheDir}, nil
+	return &RuntimeManager{
+		rootDir:   rootDir,
+		cacheDir:  cacheDir,
+		getPlugin: getPlugin,
+	}, nil
 }
 
 func (r *RuntimeManager) Close() {
@@ -83,7 +88,7 @@ func (r *RuntimeManager) GetPlugins(config []PluginConfig) []*PluginHandle {
 			pluginConfig.ID,
 			pluginConfig.Arg,
 			r.NewRuntime(pluginConfig.ID),
-			GetPlugin)
+			r.getPlugin)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// this is not an error because we need a way
