@@ -41,7 +41,7 @@ const (
 
 var (
 	rootDir        string
-	runtimeManager *RuntimeManager
+	runtimeManager *impl.RuntimeManager
 )
 
 func main() {
@@ -104,7 +104,7 @@ func main() {
 	}
 
 	// load plugins
-	runtimeManager, err = NewRuntimeManager(rootDir)
+	runtimeManager, err = impl.NewRuntimeManager(rootDir, GetPlugin)
 	if err != nil {
 		exit(255)
 	}
