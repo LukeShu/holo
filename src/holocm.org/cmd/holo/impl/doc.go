@@ -21,6 +21,11 @@
 // Package impl implements most of the "holo" program; as a set of
 // modular pieces.
 //
+// Each piece is usable without the others; there is no global or
+// shared state between them... mostly.  The "output" package does
+// provide some share global state; but it all takes place in the
+// "output" package, not here.
+//
 // 1. Call "NewConfigReader(rootDir)" to get a LineReader that will
 // read lines from all of the relevant configuration files.
 //
@@ -49,9 +54,12 @@
 // selectors calling entityHandle.MatchesSelector(selector) for each.
 //
 // 6. Call one of "CommandApply", "CommandDiff", or "CommandScan" with
-// your list of entities.  (Beware that you should probably have a
-// system-wide mutex/lockfile, ensuring that only one CommandApply is
-// running on a system at once!)
+// your list of entities.
+//
+// Beware that you should probably have a system-wide mutex/lockfile,
+// ensuring that only one CommandApply is running on a system at once!
+// You can do this with a PID file at a fixed location with
+// AcquirePidFile(), and calling pidFile.Release() when done.
 //
 // Alternatively, you can loop over the list of entities yourself,
 // calling ".Apply()", ".PrintReport()", ".PrintScanReport()", or
