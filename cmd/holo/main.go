@@ -69,10 +69,11 @@ func Main() (exitCode int) {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
 		command = func(e []*impl.EntityHandle, options map[int]bool) int {
-			if !impl.AcquirePidfile(filepath.Join(rootDir, "run/holo.pid")) {
+			pidFile := impl.AcquirePidFile(filepath.Join(rootDir, "run/holo.pid"))
+			if pidFile == nil {
 				return 255
 			}
-			defer impl.ReleasePidfile()
+			defer pidFile.Release()
 			return impl.CommandApply(e, options[optionApplyForce])
 		}
 	case "diff":
