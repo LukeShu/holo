@@ -25,9 +25,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
+	"holocm.org/lib/holo"
+	"holocm.org/plugins/externalplugin"
 )
 
 const (
@@ -36,10 +39,18 @@ const (
 	optionScanPorcelain
 )
 
-var runtimeManager *RuntimeManager
+var (
+	rootDir        string
+	runtimeManager *RuntimeManager
+)
 
 func main() {
-	//a command word must be given as first argument
+	rootDir = os.Getenv("HOLO_ROOT_DIR")
+	if rootDir == "" {
+		rootDir = "/"
+	}
+
+	// a command word must be given as first argument
 	if len(os.Args) < 2 {
 		help(os.Stderr)
 		exit(2)
@@ -53,11 +64,11 @@ func main() {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
 		command = func(e []*impl.EntityHandle) {
-			if !AcquireLockfile() {
+			if !AcquirePidfile(filepath.Join(rootDir, "run/holo.pid")) {
 				exit(255)
 			}
-			defer ReleaseLockfile()
 			impl.CommandApply(e, options[optionApplyForce])
+			ReleasePidfile()
 		}
 	case "diff":
 		command = impl.CommandDiff
@@ -81,7 +92,7 @@ func main() {
 	}
 
 	// load configuration
-	configReader, err := impl.NewConfigReader(RootDirectory())
+	configReader, err := impl.NewConfigReader(rootDir)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
 		exit(255)
@@ -93,7 +104,7 @@ func main() {
 	}
 
 	// load plugins
-	runtimeManager, err = NewRuntimeManager(RootDirectory())
+	runtimeManager, err = NewRuntimeManager(rootDir)
 	if err != nil {
 		exit(255)
 	}
@@ -161,4 +172,16 @@ func exit(code int) {
 		runtimeManager.Close()
 	}
 	os.Exit(code)
+}
+
+func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
+	if arg == nil {
+		_arg := filepath.Join(rootDir, "usr/lib/holo/holo-"+id)
+		arg = &_arg
+	}
+	plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
+	if err != nil {
+		return nil, err
+	}
+	return plugin, nil
 }
