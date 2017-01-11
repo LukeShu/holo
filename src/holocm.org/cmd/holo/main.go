@@ -33,21 +33,52 @@ import (
 	"holocm.org/plugins/externalplugin"
 )
 
-const (
-	optionApplyForce = iota
-	optionScanShort
-	optionScanPorcelain
-)
-
-var (
-	rootDir        string
-	runtimeManager *impl.RuntimeManager
-)
-
 func main() {
-	rootDir = os.Getenv("HOLO_ROOT_DIR")
+	rootDir := os.Getenv("HOLO_ROOT_DIR")
 	if rootDir == "" {
 		rootDir = "/"
+	}
+
+	getPlugin := func(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
+		if arg == nil {
+			_arg := filepath.Join(rootDir, "usr/lib/holo/holo-"+id)
+			arg = &_arg
+		}
+		plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
+		if err != nil {
+			return nil, err
+		}
+		return plugin, nil
+	}
+
+	Main(rootDir, version, getPlugin)
+}
+
+func Main(rootDir, version string, getPlugin impl.PluginGetter) {
+	const (
+		optionApplyForce = iota
+		optionScanShort
+		optionScanPorcelain
+	)
+
+	var runtimeManager *impl.RuntimeManager
+
+	help := func(w io.Writer) {
+		program := os.Args[0]
+		fmt.Fprintf(w, "Usage: %s <operation> [...]\nOperations:\n", program)
+		fmt.Fprintf(w, "    %s apply [-f|--force] [selector ...]\n", program)
+		fmt.Fprintf(w, "    %s diff [selector ...]\n", program)
+		fmt.Fprintf(w, "    %s scan [-s|--short|-p|--porcelain] [selector ...]\n", program)
+		fmt.Fprintf(w, "    %s --help\n", program)
+		fmt.Fprintf(w, "    %s --version\n", program)
+		fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
+	}
+
+	exit := func(code int) {
+		if runtimeManager != nil {
+			runtimeManager.Close()
+		}
+		os.Exit(code)
 	}
 
 	// a command word must be given as first argument
@@ -109,7 +140,7 @@ func main() {
 	if err != nil {
 		exit(255)
 	}
-	plugins := runtimeManager.GetPlugins(config.Plugins, GetPlugin)
+	plugins := runtimeManager.GetPlugins(config.Plugins, getPlugin)
 	if plugins == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
@@ -155,34 +186,4 @@ func main() {
 	command(entities)
 
 	exit(0)
-}
-
-func help(w io.Writer) {
-	program := os.Args[0]
-	fmt.Fprintf(w, "Usage: %s <operation> [...]\nOperations:\n", program)
-	fmt.Fprintf(w, "    %s apply [-f|--force] [selector ...]\n", program)
-	fmt.Fprintf(w, "    %s diff [selector ...]\n", program)
-	fmt.Fprintf(w, "    %s scan [-s|--short|-p|--porcelain] [selector ...]\n", program)
-	fmt.Fprintf(w, "    %s --help\n", program)
-	fmt.Fprintf(w, "    %s --version\n", program)
-	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
-}
-
-func exit(code int) {
-	if runtimeManager != nil {
-		runtimeManager.Close()
-	}
-	os.Exit(code)
-}
-
-func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
-	if arg == nil {
-		_arg := filepath.Join(rootDir, "usr/lib/holo/holo-"+id)
-		arg = &_arg
-	}
-	plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
-	if err != nil {
-		return nil, err
-	}
-	return plugin, nil
 }
