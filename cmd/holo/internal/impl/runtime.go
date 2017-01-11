@@ -30,23 +30,22 @@ import (
 )
 
 type RuntimeManager struct {
-	rootDir   string
-	cacheDir  string
-	getPlugin PluginGetter
+	rootDir  string
+	cacheDir string
 }
 
-func NewRuntimeManager(rootDir string, getPlugin PluginGetter) (*RuntimeManager, error) {
-	// TODO(lukeshu): Consider inspecting os.TempDir() to see if
-	// it is below rootDir.  I don't think it's important to do so
-	// because ioutil.TempDir() avoids conflicts.
+func NewRuntimeManager(rootDir string) (*RuntimeManager, error) {
+	// TODO(lukeshu): NewRuntimeManager: Consider inspecting
+	// os.TempDir() to see if it is below rootDir.  I don't think
+	// it's important to do so because ioutil.TempDir() avoids
+	// conflicts.
 	cacheDir, err := ioutil.TempDir(os.TempDir(), "holo.")
 	if err != nil {
 		return nil, err
 	}
 	return &RuntimeManager{
-		rootDir:   rootDir,
-		cacheDir:  cacheDir,
-		getPlugin: getPlugin,
+		rootDir:  rootDir,
+		cacheDir: cacheDir,
 	}, nil
 }
 
@@ -81,14 +80,14 @@ func SetupRuntime(r holo.Runtime) bool {
 	return !hasError
 }
 
-func (r *RuntimeManager) GetPlugins(config []PluginConfig) []*PluginHandle {
+func (r *RuntimeManager) GetPlugins(config []PluginConfig, getPlugin PluginGetter) []*PluginHandle {
 	plugins := []*PluginHandle{} // non nil
 	for _, pluginConfig := range config {
 		pluginHandle, err := NewPluginHandle(
 			pluginConfig.ID,
 			pluginConfig.Arg,
 			r.NewRuntime(pluginConfig.ID),
-			r.getPlugin)
+			getPlugin)
 		if err != nil {
 			if os.IsNotExist(err) {
 				// this is not an error because we need a way

@@ -112,12 +112,12 @@ func Main() (exitCode int) {
 		}
 
 		// load plugins
-		runtimeManager, err = impl.NewRuntimeManager(rootDir, GetPlugin)
+		runtimeManager, err = impl.NewRuntimeManager(rootDir)
 		if err != nil {
 			return 255
 		}
 		defer runtimeManager.Close()
-		plugins := runtimeManager.GetPlugins(config.Plugins)
+		plugins := runtimeManager.GetPlugins(config.Plugins, GetPlugin)
 		if plugins == nil {
 			// some fatal error occurred - it was already
 			// reported, so just exit
