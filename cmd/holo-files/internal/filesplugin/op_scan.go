@@ -29,18 +29,18 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
-// Scan returns a slice of all the Entities.
-func Scan() []*Entity {
-	entities := make(map[string]*Entity)
+// ScanRepo returns a slice of all the Entities.
+func (p FilesPlugin) ScanRepo() []*Entity {
 	//walk over the resource directory to find resources (and thus the corresponding entities)
-	resourceDir := fileutil.ResourceDirectory()
+	entities := make(map[string]*Entity)
+	resourceDir := p.resourceDirectory()
 	filepath.Walk(resourceDir, func(resourcePath string, resourceFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !(resourceFileInfo.Mode().IsRegular() || fileutil.IsFileInfoASymbolicLink(resourceFileInfo)) {
+		if !fileutil.IsManageableFileInfo(resourceFileInfo) {
 			return nil
 		}
 		// don't consider resourceDir itself to be a resource
@@ -57,24 +57,24 @@ func Scan() []*Entity {
 		}
 
 		//create new Entity if necessary and store the resource in it
-		resource := NewResource(resourcePath)
+		resource := p.NewResource(resourcePath)
 		entityPath := resource.EntityPath()
 		if entities[entityPath] == nil {
-			entities[entityPath] = NewEntity(entityPath)
+			entities[entityPath] = p.NewEntity(entityPath)
 		}
 		entities[entityPath].AddResource(resource)
 		return nil
 	})
 
 	//walk over the base directory to find orphaned entities
-	baseDir := fileutil.BaseDirectory()
+	baseDir := p.baseDirectory()
 	filepath.Walk(baseDir, func(basePath string, baseFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !(baseFileInfo.Mode().IsRegular() || fileutil.IsFileInfoASymbolicLink(baseFileInfo)) {
+		if !fileutil.IsManageableFileInfo(baseFileInfo) {
 			return nil
 		}
 		// don't consider baseDir itself to be a base (it
@@ -87,7 +87,7 @@ func Scan() []*Entity {
 		//ensure that there is an Entity for this base
 		//(it could be orphaned)
 		entityPath, _ := filepath.Rel(baseDir, basePath)
-		entity := NewEntity(entityPath)
+		entity := p.NewEntity(entityPath)
 		if entities[entityPath] == nil {
 			entities[entityPath] = entity
 		}

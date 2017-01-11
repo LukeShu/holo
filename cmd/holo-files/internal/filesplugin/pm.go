@@ -18,8 +18,6 @@
 *
 *******************************************************************************/
 
-//Package platform implements integration points with the platform that Holo is
-//running (most notably the package manager).
 package filesplugin
 
 import (
@@ -30,17 +28,16 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
-// PackageManager provides integration points with a distribution's toolchain.
+// PackageManager provides integration points with a distribution's
+// toolchain.
 type PackageManager interface {
 	// FindUpdatedTargetBase is called as part of the resource
-	// application algorithm. If the system package manager
+	// application algorithm.  If the system package manager
 	// updates a file which has been modified by Holo, it will
 	// usually place the new stock configuration next to the
-	// targetPath (usually with a special suffix). If such a file
+	// targetPath (usually with a special suffix).  If such a file
 	// exists, this method must return its name, so that Holo can
 	// pick it up and use it as a new base configuration.
 	//
@@ -52,10 +49,10 @@ type PackageManager interface {
 	FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error)
 
 	// AdditionalCleanupTargets is called as part of the orphan
-	// handling. When an application package is removed, but one
+	// handling.  When an application package is removed, but one
 	// of its configuration files has been modified by Holo, the
 	// system package manager will usually retain a copy next to
-	// the targetPath (usually with a special suffix). If such a
+	// the targetPath (usually with a special suffix).  If such a
 	// file exists, this method must return its name, for Holo to
 	// clean it up.
 	AdditionalCleanupTargets(targetPath string) []string
@@ -63,12 +60,12 @@ type PackageManager interface {
 
 var pm PackageManager
 
-// GetPackageManager returns the most suitable platform implementation
-// for the current system.
-func GetPackageManager() PackageManager {
+// GetPackageManager returns the most suitable PackageManager
+// implementation for the current system.
+func GetPackageManager(rootDir string) PackageManager {
 	if pm == nil {
 		//which distribution are we running on?
-		isDist := getOsRelease()
+		isDist := getOsRelease(rootDir)
 		switch {
 		case isDist["alpine"]:
 			pm = pmAlpine{}
@@ -81,7 +78,15 @@ func GetPackageManager() PackageManager {
 		case isDist["unittest"]: // intentionally undocumented
 			pm = pmNone{}
 		default:
-			reportUnsupportedDistribution(isDist)
+			dists := make([]string, 0, len(isDist))
+			for dist := range isDist {
+				dists = append(dists, dist)
+			}
+			sort.Strings(dists)
+			fmt.Fprintf(os.Stderr, "!! Running on an unrecognized distribution. Distribution IDs: %s\n", strings.Join(dists, ","))
+			fmt.Fprintf(os.Stderr, ">> Please report this error at <https://github.com/holocm/holo/issues/new>\n")
+			fmt.Fprintf(os.Stderr, ">> and include the contents of your /etc/os-release file.\n")
+
 			pm = pmNone{}
 		}
 	}
@@ -90,12 +95,12 @@ func GetPackageManager() PackageManager {
 
 // getOsRelease returns a set of distribution IDs, drawing on the ID=
 // and ID_LIKE= fields of os-release(5).
-func getOsRelease() map[string]bool {
+func getOsRelease(rootDir string) map[string]bool {
 	//read /etc/os-release, fall back to /usr/lib/os-release if not available
-	bytes, err := ioutil.ReadFile(filepath.Join(fileutil.TargetDirectory(), "etc/os-release"))
+	bytes, err := ioutil.ReadFile(filepath.Join(rootDir, "etc/os-release"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			bytes, err = ioutil.ReadFile(filepath.Join(fileutil.TargetDirectory(), "usr/lib/os-release"))
+			bytes, err = ioutil.ReadFile(filepath.Join(rootDir, "usr/lib/os-release"))
 		}
 	}
 	if err != nil {
@@ -140,17 +145,4 @@ func getOsRelease() map[string]bool {
 		}
 	}
 	return result
-}
-
-// reportUnsupportedDistribution prints the standard warning that the
-// current executable is running on an unsupported distribution.
-func reportUnsupportedDistribution(isDist map[string]bool) {
-	dists := make([]string, 0, len(isDist))
-	for dist := range isDist {
-		dists = append(dists, dist)
-	}
-	sort.Strings(dists)
-	fmt.Fprintf(os.Stderr, "!! Running on an unrecognized distribution. Distribution IDs: %s\n", strings.Join(dists, ","))
-	fmt.Fprintf(os.Stderr, ">> Please report this error at <https://github.com/holocm/holo/issues/new>\n")
-	fmt.Fprintf(os.Stderr, ">> and include the contents of your /etc/os-release file.\n")
 }

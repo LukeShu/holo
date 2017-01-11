@@ -105,7 +105,7 @@ func (fb FileBuffer) Write(path string) error {
 		return err
 	}
 	if err == nil {
-		if !(info.Mode().IsRegular() || IsFileInfoASymbolicLink(info)) {
+		if !IsManageableFileInfo(info) {
 			return &os.PathError{
 				Op:   "holo.FileBuffer.Write",
 				Path: path,

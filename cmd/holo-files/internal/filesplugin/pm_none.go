@@ -20,8 +20,8 @@
 
 package filesplugin
 
-// pmNone provides the platform.PackageManager for unrecognized
-// distributions or generic unit tests.
+// pmNone provides the PackageManager for unrecognized operating
+// systems or generic unit tests.
 type pmNone struct{}
 
 func (p pmNone) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {

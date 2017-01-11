@@ -29,8 +29,8 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
-// pmPacman provides the platform.PackageManager for
-// Pacman/libALPM-based distributions (Arch Linux and derivatives).
+// pmPacman provides the PackageManager for Pacman/libALPM-based
+// distributions (Arch Linux and derivatives).
 type pmPacman struct{}
 
 func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {

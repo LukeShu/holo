@@ -28,13 +28,14 @@ import (
 	"path/filepath"
 
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
+	"github.com/holocm/holo/lib/holo"
 )
 
 // applyNonOrphan performs the complete application algorithm for the
 // given Entity.  This includes taking a copy of the base if
 // necessary, applying all resources, and saving the result in the
 // target path with the correct file metadata.
-func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error) {
+func (entity *Entity) applyNonOrphan(withForce bool) (holo.ApplyResult, error) {
 	//step 1: check if a system update installed a new version of the stock
 	//configuration
 	//
@@ -43,7 +44,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 	// stat()ing the wrong file.
 	newBasePath, newBase, err := entity.GetNewBase()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	// step 2: Load our 3 versions into memory.
@@ -52,7 +53,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		if pe, ok := err.(*os.PathError); ok {
 			err = errors.New("skipping target: " + pe.Err.Error())
 		}
-		return false, err
+		return nil, err
 	}
 
 	base, err := entity.GetBase()
@@ -60,7 +61,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		if pe, ok := err.(*os.PathError); ok {
 			err = errors.New("skipping target: " + pe.Err.Error())
 		}
-		return false, err
+		return nil, err
 	}
 
 	provisioned, err := entity.GetProvisioned()
@@ -68,7 +69,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		if pe, ok := err.(*os.PathError); ok {
 			err = errors.New("skipping target: " + pe.Err.Error())
 		}
-		return false, err
+		return nil, err
 	}
 
 	////////////////////////////////////////////////////////////////////////
@@ -79,12 +80,12 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		baseDir := filepath.Dir(base.Path)
 		err := os.MkdirAll(baseDir, 0755)
 		if err != nil {
-			return false, fmt.Errorf("Cannot create directory %s: %s", baseDir, err.Error())
+			return nil, fmt.Errorf("Cannot create directory %s: %s", baseDir, err.Error())
 		}
 
 		err = current.Write(base.Path)
 		if err != nil {
-			return false, fmt.Errorf("Cannot copy %s to %s: %s", current.Path, base.Path, err.Error())
+			return nil, fmt.Errorf("Cannot copy %s to %s: %s", current.Path, base.Path, err.Error())
 		}
 		tmp := current
 		tmp.Path = base.Path
@@ -92,13 +93,13 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 	}
 
 	if !base.Manageable {
-		return false, errors.New("skipping target: not a manageable file")
+		return nil, errors.New("skipping target: not a manageable file")
 	}
 
 	//step 2: make sure there is a current file (unless --force)
 	if !current.Manageable {
 		if !withForce {
-			return false, ErrNeedForceToRestore
+			return holo.ApplyExternallyDeleted, nil
 		}
 	}
 
@@ -110,7 +111,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		fmt.Printf(">> found updated target base: %s -> %s\n", newBasePath, base.Path)
 		err := newBase.Write(base.Path)
 		if err != nil {
-			return false, fmt.Errorf("Cannot copy %s to %s: %v", newBase.Path, base.Path, err)
+			return nil, fmt.Errorf("Cannot copy %s to %s: %v", newBase.Path, base.Path, err)
 		}
 		_ = os.Remove(newBase.Path) //this can fail silently
 		newBase.Path = base.Path
@@ -125,7 +126,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 	//render desired state of entity
 	desired, err := entity.GetDesired(base)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	//compare it against the current expected state (a reference
@@ -138,7 +139,7 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 	}
 	if !(current.EqualTo(expected) || current.EqualTo(desired)) {
 		if !withForce {
-			return false, ErrNeedForceToOverwrite
+			return holo.ApplyExternallyChanged, nil
 		}
 	}
 
@@ -148,11 +149,11 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		provisionedDir := filepath.Dir(provisioned.Path)
 		err = os.MkdirAll(provisionedDir, 0755)
 		if err != nil {
-			return false, fmt.Errorf("Cannot write %s: %s", provisioned.Path, err.Error())
+			return nil, fmt.Errorf("Cannot write %s: %s", provisioned.Path, err.Error())
 		}
 		err = desired.Write(provisioned.Path)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 	}
 
@@ -162,36 +163,40 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 		newTargetPath := current.Path + ".holonew"
 		err = desired.Write(newTargetPath)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		//move $target.holonew -> $target atomically (to ensure that there is
 		//always a valid file at $target)
-		return false, os.Rename(newTargetPath, current.Path)
+		err = os.Rename(newTargetPath, current.Path)
+		if err != nil {
+			return nil, err
+		}
+		return holo.ApplyApplied, nil
 	}
-	return true, nil
+	return holo.ApplyAlreadyApplied, nil
 }
 
 //GetBase return the package manager-supplied base version of the
 //entity, as recorded the last time it was provisioned.
 func (entity *Entity) GetBase() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(fileutil.BaseDirectory()))
+	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.baseDirectory()))
 }
 
 //GetProvisioned returns the recorded last-provisioned state of the
 //entity.
 func (entity *Entity) GetProvisioned() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(fileutil.ProvisionedDirectory()))
+	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.provisionedDirectory()))
 }
 
 //GetCurrent returns the current version of the entity.
 func (entity *Entity) GetCurrent() (fileutil.FileBuffer, error) {
-	return fileutil.NewFileBuffer(entity.PathIn(fileutil.TargetDirectory()))
+	return fileutil.NewFileBuffer(entity.PathIn(entity.plugin.targetDirectory()))
 }
 
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
 func (entity *Entity) GetNewBase() (path string, buf fileutil.FileBuffer, err error) {
-	realPath, path, err := GetPackageManager().FindUpdatedTargetBase(entity.PathIn(fileutil.TargetDirectory()))
+	realPath, path, err := GetPackageManager(entity.plugin.targetDirectory()).FindUpdatedTargetBase(entity.PathIn(entity.plugin.targetDirectory()))
 	if err != nil {
 		return
 	}
@@ -218,7 +223,7 @@ func (entity *Entity) GetDesired(base fileutil.FileBuffer) (fileutil.FileBuffer,
 	//load the base into a buffer as the start for the application
 	//algorithm
 	buffer := base
-	buffer.Path = entity.PathIn(fileutil.TargetDirectory())
+	buffer.Path = entity.PathIn(entity.plugin.targetDirectory())
 
 	//apply all the applicable resources in order
 	var err error

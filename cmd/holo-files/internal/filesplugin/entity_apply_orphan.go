@@ -31,7 +31,7 @@ import (
 // assesses the situation. This logic is grouped in one function
 // because it's used by both `holo scan` and `holo apply`.
 func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
-	targetPath = entity.PathIn(fileutil.TargetDirectory())
+	targetPath = entity.PathIn(entity.plugin.targetDirectory())
 	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
@@ -40,6 +40,9 @@ func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
 
 // applyOrphan cleans up an orphaned entity.
 func (entity *Entity) applyOrphan() []error {
+	_, strategy, _ := entity.scanOrphan()
+	basePath := entity.PathIn(entity.plugin.baseDirectory())
+
 	var errs []error
 	appendError := func(err error) {
 		if err != nil {
@@ -55,13 +58,12 @@ func (entity *Entity) applyOrphan() []error {
 	provisioned, err := entity.GetProvisioned()
 	appendError(err)
 
-	basePath := entity.PathIn(fileutil.BaseDirectory())
-
-	if !current.Manageable { // delete
+	switch strategy {
+	case "delete":
 		//if the package management left behind additional cleanup targets
 		//(most likely a backup of our custom configuration), we can delete
 		//these too
-		cleanupTargets := GetPackageManager().AdditionalCleanupTargets(current.Path)
+		cleanupTargets := GetPackageManager(entity.plugin.targetDirectory()).AdditionalCleanupTargets(current.Path)
 		for _, path := range cleanupTargets {
 			otherFile, err := fileutil.NewFileBuffer(path)
 			if err != nil {
@@ -75,10 +77,10 @@ func (entity *Entity) applyOrphan() []error {
 
 		appendError(os.Remove(provisioned.Path))
 		appendError(os.Remove(basePath))
-	} else { // restore
+	case "restore":
 		//target is still there - restore the target base, *but* before that,
 		//check if there is an updated target base
-		updatedTBPath, reportedTBPath, err := GetPackageManager().FindUpdatedTargetBase(current.Path)
+		updatedTBPath, reportedTBPath, err := GetPackageManager(entity.plugin.targetDirectory()).FindUpdatedTargetBase(current.Path)
 		appendError(err)
 		if updatedTBPath != "" {
 			fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, current.Path)

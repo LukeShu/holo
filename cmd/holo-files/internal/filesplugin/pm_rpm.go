@@ -21,13 +21,10 @@
 package filesplugin
 
 import (
-	"fmt"
-
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
-// pmRPM provides the platform.PackageManager for RPM-based
-// distributions.
+// pmRPM provides the PackageManager for RPM-based distributions.
 type pmRPM struct{}
 
 func (p pmRPM) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
@@ -46,7 +43,7 @@ func (p pmRPM) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPat
 		if err != nil {
 			return "", "", err
 		}
-		return rpmnewPath, fmt.Sprintf("%s (with .rpmsave)", targetPath), nil
+		return rpmnewPath, targetPath + " (with .rpmsave)", nil
 	}
 
 	if fileutil.IsManageableFile(rpmnewPath) {

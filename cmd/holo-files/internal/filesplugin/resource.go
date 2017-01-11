@@ -69,8 +69,8 @@ func (resource rawResource) EntityPath() string    { return resource.entityPath 
 
 //NewResource creates a Resource instance when its path in the file system is
 //known.
-func NewResource(path string) Resource {
-	relPath, _ := filepath.Rel(fileutil.ResourceDirectory(), path)
+func (p FilesPlugin) NewResource(path string) Resource {
+	relPath, _ := filepath.Rel(p.resourceDirectory(), path)
 	segments := strings.SplitN(relPath, string(filepath.Separator), 2)
 	ext := filepath.Ext(segments[1])
 	raw := rawResource{

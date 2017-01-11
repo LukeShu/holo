@@ -20,8 +20,6 @@
 
 package fileutil
 
-//This file needs to be in an extra package to break an import cycle.
-
 import (
 	"io/ioutil"
 	"os"
@@ -35,19 +33,13 @@ func IsManageableFile(path string) bool {
 	if err != nil {
 		return false
 	}
-	return info.Mode().IsRegular() || IsFileInfoASymbolicLink(info)
+	return IsManageableFileInfo(info)
 }
 
 // IsManageableFileInfo returns whether the given FileInfo refers to a
 // manageable file (i.e. a regular file or a symlink).
 func IsManageableFileInfo(info os.FileInfo) bool {
-	return info.Mode().IsRegular() || IsFileInfoASymbolicLink(info)
-}
-
-// IsFileInfoASymbolicLink returns whether the given FileInfo
-// describes a symlink.
-func IsFileInfoASymbolicLink(fileInfo os.FileInfo) bool {
-	return (fileInfo.Mode() & os.ModeType) == os.ModeSymlink
+	return info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0
 }
 
 // CopyFile copies a regular file or symlink, including the file
@@ -57,46 +49,42 @@ func CopyFile(fromPath, toPath string) error {
 	if err != nil {
 		return err
 	}
-	if info.Mode().IsRegular() {
-		return copyFileImpl(fromPath, toPath)
-	}
-	return copySymlinkImpl(fromPath, toPath)
-}
-
-func copyFileImpl(fromPath, toPath string) error {
-	//copy contents
-	data, err := ioutil.ReadFile(fromPath)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(toPath, data, 0600)
-	if err != nil {
-		return err
-	}
-
-	return ApplyFilePermissions(fromPath, toPath)
-}
-
-func copySymlinkImpl(fromPath, toPath string) error {
-	//read link target
-	target, err := os.Readlink(fromPath)
-	if err != nil {
-		return err
-	}
-	//remove old file or link if it exists
-	if IsManageableFile(toPath) {
-		err = os.Remove(toPath)
+	switch info.Mode().IsRegular() {
+	case true:
+		// regular file
+		data, err := ioutil.ReadFile(fromPath)
 		if err != nil {
 			return err
 		}
-	}
-	//create new link
-	err = os.Symlink(target, toPath)
-	if err != nil {
-		return err
-	}
+		err = ioutil.WriteFile(toPath, data, 0600)
+		if err != nil {
+			return err
+		}
+		return ApplyFilePermissions(fromPath, toPath)
+	case false:
+		// symbolic link
 
-	return nil
+		//read link target
+		target, err := os.Readlink(fromPath)
+		if err != nil {
+			return err
+		}
+		//remove old file or link if it exists
+		if IsManageableFile(toPath) {
+			err = os.Remove(toPath)
+			if err != nil {
+				return err
+			}
+		}
+		//create new link
+		err = os.Symlink(target, toPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+	panic("not reached")
 }
 
 // MoveFile is like CopyFile, but it removes the fromPath after
@@ -125,7 +113,7 @@ func ApplyFilePermissions(fromPath, toPath string) error {
 		return err
 	}
 
-	if !IsFileInfoASymbolicLink(targetInfo) {
+	if targetInfo.Mode()&os.ModeSymlink == 0 {
 		//apply permissions
 		err = os.Chmod(toPath, info.Mode())
 		if err != nil {

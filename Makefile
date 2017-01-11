@@ -41,7 +41,6 @@ build/man/%: doc/%.pod .version | build/man
 	pod2man --name="$(shell echo $* | cut -d. -f1)" --section=$(shell echo $* | cut -d. -f2) \
 		--center="Configuration Management" --release="Holo $$(cat .version)" \
 		$< $@
-
 test: check # just a synonym
 .PHONY: test
 
@@ -136,3 +135,4 @@ vendor: FORCE
 .PHONY: vendor
 
 .PHONY: FORCE
+.DELETE_ON_ERROR:

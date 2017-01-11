@@ -21,13 +21,11 @@
 package filesplugin
 
 import (
-	"fmt"
-
 	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
-// pmDPKG provides the platform.PackageManager for dpkg-based
-// distributions (Debian and derivatives).
+// pmDPKG provides the PackageManager for dpkg-based distributions
+// (Debian and derivatives).
 type pmDPKG struct{}
 
 func (p pmDPKG) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
@@ -46,7 +44,7 @@ func (p pmDPKG) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPa
 		if err != nil {
 			return "", "", err
 		}
-		return dpkgDistPath, fmt.Sprintf("%s (with .dpkg-old)", targetPath), nil
+		return dpkgDistPath, targetPath + " (with .dpkg-old)", nil
 	}
 
 	if fileutil.IsManageableFile(dpkgDistPath) {
