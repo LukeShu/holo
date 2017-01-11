@@ -21,35 +21,34 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"holocm.org/cmd/holo/impl"
-	"holocm.org/cmd/holo/output"
 )
 
-//Configuration contains the parsed contents of /etc/holorc.
-type Configuration struct {
-	Plugins []*impl.PluginHandle
+type LineReader interface {
+	ReadLine() (string, error)
 }
 
-// List config snippets in /etc/holorc.d.
-func listConfigSnippets() ([]string, error) {
-	dirPath := filepath.Join(RootDirectory(), "etc/holorc.d")
-	dir, err := os.Open(dirPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			//non-existence of the directory is acceptable
-			return nil, nil
-		}
-		return nil, err
-	}
-	fis, err := dir.Readdir(-1)
-	if err != nil {
+// Don't simply use bufio.Reader(io.MultiReader(...)) because if there
+// is a holorc.d file without a trailing newline, that line would get
+// merged with the first line of the next file.
+type configReader struct {
+	files []io.Reader
+	buf   *bufio.Reader
+}
+
+func NewConfigReader(RootDirectory string) (LineReader, error) {
+	// etc/holorc.d/*
+	dirPath := filepath.Join(RootDirectory, "etc/holorc.d")
+	fis, err := ioutil.ReadDir(dirPath)
+	if err != nil && !os.IsNotExist(err) {
+		// non-existence of the directory is acceptable
 		return nil, err
 	}
 	var paths []string
@@ -59,66 +58,88 @@ func listConfigSnippets() ([]string, error) {
 		}
 	}
 	sort.Strings(paths)
-	return paths, nil
-}
-
-//The part of ReadConfiguration that reads all the holorc files.
-func readConfigLines() ([]string, error) {
-	//enumerate snippets
-	paths, err := listConfigSnippets()
-	if err != nil {
-		return nil, err
-	}
-	//holorc is read at the very end, after all snippets
-	paths = append(paths, filepath.Join(RootDirectory(), "etc/holorc"))
-
-	//read snippets in order
-	var lines []string
+	// etc/holorc
+	paths = append(paths, filepath.Join(RootDirectory, "etc/holorc"))
+	// open all of them
+	var files []io.Reader
 	for _, path := range paths {
-		contents, err := ioutil.ReadFile(path)
+		file, err := os.Open(path)
 		if err != nil {
-			return nil, fmt.Errorf("cannot read %s: %s", path, err.Error())
+			return nil, err
 		}
-		lines = append(lines, strings.SplitN(strings.TrimSpace(string(contents)), "\n", -1)...)
+		files = append(files, file)
 	}
-	return lines, nil
+	return &configReader{files: files}, nil
 }
 
-//ReadConfiguration reads the configuration file /etc/holorc.
-func ReadConfiguration() *Configuration {
-	lines, err := readConfigLines()
-	if err != nil {
-		output.Errorf(output.Stderr, err.Error())
-		return nil
+func (r *configReader) ReadLine() (string, error) {
+	if r.buf == nil {
+		if len(r.files) == 0 {
+			return "", io.EOF
+		}
+		r.buf = bufio.NewReader(r.files[0])
+		r.files = r.files[1:]
 	}
+	line, err := r.buf.ReadString('\n')
+	if err == io.EOF {
+		r.buf = nil
+		err = nil
+	}
+	return line, err
+}
 
-	var result Configuration
-	for _, line := range lines {
-		//ignore comments and empty lines
+type PluginConfig struct {
+	ID  string
+	Arg *string // nullable string
+}
+
+func (pc PluginConfig) String() string {
+	if pc.Arg == nil {
+		return pc.ID
+	} else {
+		return pc.ID + "=" + *pc.Arg
+	}
+}
+
+// Configuration contains the parsed contents of `/etc/holorc` and
+// `/etc/holorc.d/*`.
+type Config struct {
+	Plugins []PluginConfig
+}
+
+// ReadConfig reads the configuration files `/etc/holorc` and
+// `/etc/holorc.d/*`.
+func ReadConfig(r LineReader) (*Config, error) {
+	var result Config
+	var err error
+	for err != io.EOF {
+		// Read a line
+		var line string
+		line, err = r.ReadLine()
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "#") || line == "" {
-			continue
-		}
 
-		//collect plugin IDs
-		if strings.HasPrefix(line, "plugin ") {
-			plugin, err := getPlugin2(strings.TrimSpace(strings.TrimPrefix(line, "plugin")))
-			if err != nil {
-				output.Errorf(output.Stderr, "%s", err.Error())
-				return nil
+		// Parse the line
+		switch {
+		case strings.HasPrefix(line, "#") || line == "":
+			// skip comments and empty lines
+		case strings.HasPrefix(line, "plugin "):
+			pluginSpec := strings.TrimSpace(strings.TrimPrefix(line, "plugin"))
+			var plugin PluginConfig
+			if strings.Contains(pluginSpec, "=") {
+				fields := strings.SplitN(pluginSpec, "=", 2)
+				plugin.ID = fields[0]
+				plugin.Arg = &fields[1]
+			} else {
+				plugin.ID = pluginSpec
 			}
-			if plugin != nil {
-				result.Plugins = append(result.Plugins, plugin)
-			}
-		} else {
-			//unknown line
-			output.Errorf(output.Stderr, "cannot parse configuration: unknown command: %s", line)
-			return nil
+			result.Plugins = append(result.Plugins, plugin)
+		default:
+			return nil, fmt.Errorf("cannot parse configuration: unknown command: %q", line)
 		}
 	}
 
-	if !Setup(result.Plugins) {
-		return nil
-	}
-	return &result
+	return &result, nil
 }

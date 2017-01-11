@@ -23,7 +23,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	"holocm.org/cmd/holo/impl"
 	"holocm.org/cmd/holo/output"
@@ -43,44 +42,43 @@ func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error
 	return plugin, nil
 }
 
-func getPlugin2(pluginSpec string) (*impl.PluginHandle, error) {
-	var (
-		pluginID  string
-		pluginArg *string
-	)
-	if strings.Contains(pluginSpec, "=") {
-		fields := strings.SplitN(pluginSpec, "=", 2)
-		pluginID = fields[0]
-		pluginArg = &fields[1]
-	} else {
-		pluginID = pluginSpec
-	}
-
-	plugin, err := impl.NewPluginHandle(pluginID, pluginArg, NewRuntime(pluginID), GetPlugin)
-
-	if err != nil {
-		if os.IsNotExist(err) {
-			//this is not an error because we need a way to uninstall
-			//plugins: when the plugin's files are removed, the next
-			//"holo apply file:/etc/holorc" will remove them from the
-			//holorc, but to be able to run, Holo needs to be able to
-			//ignore the missing uninstalled plugin at this point
-			output.Warnf(output.Stderr, "%s", err.Error())
-			output.Warnf(output.Stderr, "Skipping plugin: %s", pluginSpec)
-			return nil, nil
-		} else {
-			return nil, err
+func GetPlugins(config []PluginConfig) []*impl.PluginHandle {
+	plugins := []*impl.PluginHandle{} // non nil
+	for _, pluginConfig := range config {
+		pluginHandle, err := impl.NewPluginHandle(
+			pluginConfig.ID,
+			pluginConfig.Arg,
+			NewRuntime(pluginConfig.ID),
+			GetPlugin)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// this is not an error because we need a way
+				// to uninstall plugins: when the plugin's
+				// files are removed, the next "holo apply
+				// file:/etc/holorc" will remove them from the
+				// holorc, but to be able to run, Holo needs
+				// to be able to ignore the missing
+				// uninstalled plugin at this point
+				output.Warnf(output.Stderr, "%s", err.Error())
+				output.Warnf(output.Stderr, "Skipping plugin: %s", pluginConfig)
+				continue
+			} else {
+				output.Errorf(output.Stderr, "%s", err.Error())
+				return nil
+			}
 		}
+		plugins = append(plugins, pluginHandle)
 	}
-	return plugin, nil
-}
 
-func Setup(plugins []*impl.PluginHandle) bool {
 	hasError := false
 	for _, plugin := range plugins {
 		if !SetupRuntime(plugin.Runtime) {
 			hasError = true
 		}
 	}
-	return !hasError
+	if hasError {
+		return nil
+	}
+
+	return plugins
 }
