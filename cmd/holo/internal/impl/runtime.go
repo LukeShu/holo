@@ -75,3 +75,34 @@ func SetupRuntime(r holo.Runtime) bool {
 	}
 	return !hasError
 }
+
+func (r *RuntimeManager) GetPlugins(config []PluginConfig) []*PluginHandle {
+	plugins := []*PluginHandle{} // non nil
+	for _, pluginConfig := range config {
+		pluginHandle, err := NewPluginHandle(
+			pluginConfig.ID,
+			pluginConfig.Arg,
+			r.NewRuntime(pluginConfig.ID),
+			GetPlugin)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// this is not an error because we need a way
+				// to uninstall plugins: when the plugin's
+				// files are removed, the next "holo apply
+				// file:/etc/holorc" will remove them from the
+				// holorc, but to be able to run, Holo needs
+				// to be able to ignore the missing
+				// uninstalled plugin at this point
+				output.Warnf(output.Stderr, "%s", err.Error())
+				output.Warnf(output.Stderr, "Skipping plugin: %s", pluginConfig)
+				continue
+			} else {
+				output.Errorf(output.Stderr, "%s", err.Error())
+				return nil
+			}
+		}
+		plugins = append(plugins, pluginHandle)
+	}
+
+	return plugins
+}

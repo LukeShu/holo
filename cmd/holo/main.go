@@ -25,9 +25,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
+	"github.com/holocm/holo/cmd/holo/internal/externalplugin"
 	"github.com/holocm/holo/cmd/holo/internal/impl"
 	"github.com/holocm/holo/cmd/holo/internal/output"
+	"github.com/holocm/holo/lib/holo"
 )
 
 //this is populated at compile-time, see Makefile
@@ -39,11 +42,21 @@ const (
 	optionScanPorcelain
 )
 
+var (
+	rootDir        string
+	runtimeManager *RuntimeManager
+)
+
 // Main is the main entry point, but returns the exit code rather than
 // calling os.Exit().  This distinction is useful for monobinary and
 // testing purposes.
 func Main() (exitCode int) {
-	//a command word must be given as first argument
+	rootDir = os.Getenv("HOLO_ROOT_DIR")
+	if rootDir == "" {
+		rootDir = "/"
+	}
+
+	// a command word must be given as first argument
 	if len(os.Args) < 2 {
 		help(os.Stderr)
 		return 2
@@ -55,7 +68,13 @@ func Main() (exitCode int) {
 	switch os.Args[1] {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
-		command = impl.CommandApply
+		command = func(e []*impl.EntityHandle) {
+			if !AcquirePidfile(filepath.Join(rootDir, "run/holo.pid")) {
+				exit(255)
+			}
+			impl.CommandApply(e, options[optionApplyForce])
+			ReleasePidfile()
+		}
 	case "diff":
 		command = impl.CommandDiff
 	case "scan":
@@ -77,7 +96,7 @@ func Main() (exitCode int) {
 
 	return impl.WithCacheDirectory(func() (exitCode int) {
 		// load configuration
-		configReader, err := impl.NewConfigReader(impl.RootDirectory())
+		configReader, err := impl.NewConfigReader(rootDir)
 		if err != nil {
 			output.Errorf(output.Stderr, "%s", err.Error())
 			return 255
@@ -89,7 +108,7 @@ func Main() (exitCode int) {
 		}
 
 		// load plugins
-		runtimeManager, err := impl.NewRuntimeManager(impl.RootDirectory())
+		runtimeManager, err = impl.NewRuntimeManager(rootDir)
 		if err != nil {
 			return 255
 		}
@@ -150,4 +169,16 @@ func help(w io.Writer) {
 	fmt.Fprintf(w, "   or: %s version\n", program)
 	fmt.Fprintf(w, "   or: %s help\n", program)
 	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
+}
+
+func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
+	if arg == nil {
+		_arg := filepath.Join(rootDir, "usr/lib/holo/holo-"+id)
+		arg = &_arg
+	}
+	plugin, err := externalplugin.NewExternalPlugin(id, *arg, runtime)
+	if err != nil {
+		return nil, err
+	}
+	return plugin, nil
 }

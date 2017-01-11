@@ -23,45 +23,42 @@ package impl
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 var (
-	lockPath string
-	lockFile *os.File
+	pidPath string
+	pidFile *os.File
 )
 
-// AcquireLockfile will create a lock file to ensure that only one
+// AcquirePidfile will create a pid file to ensure that only one
 // instance of Holo is running at the same time.  Returns whether the
 // lock was successfully aquired.
-func AcquireLockfile() bool {
-	//where to store the lock file?
-	lockPath = filepath.Join(RootDirectory(), "run/holo.pid")
-
+func AcquirePidfile(path string) bool {
 	var err error
-	lockFile, err = os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	pidPath = path
+	pidFile, err = os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
-		output.Errorf(output.Stderr, "Cannot create lock file %s: %s", lockPath, err.Error())
+		output.Errorf(output.Stderr, "Cannot create pid file %s: %s", pidPath, err.Error())
 		if os.IsExist(err) {
 			fmt.Fprintln(output.Stderr, "This usually means that another instance of Holo is currently running.")
-			fmt.Fprintln(output.Stderr, "If not, you can try to delete the lock file manually.")
+			fmt.Fprintln(output.Stderr, "If not, you can try to delete the pid file manually.")
 		}
 		return false
 	}
-	fmt.Fprintf(lockFile, "%d\n", os.Getpid())
-	lockFile.Sync()
+	fmt.Fprintf(pidFile, "%d\n", os.Getpid())
+	pidFile.Sync()
 	return true
 }
 
-// ReleaseLockfile removes the lock file created by AcquireLockfile.
-func ReleaseLockfile() {
-	err := lockFile.Close()
+// ReleasePidfile removes the pid file created by AcquirePidfile.
+func ReleasePidfile() {
+	err := pidFile.Close()
 	if err != nil {
 		output.Errorf(output.Stderr, err.Error())
 	}
-	err = os.Remove(lockPath)
+	err = os.Remove(pidPath)
 	if err != nil {
 		output.Errorf(output.Stderr, err.Error())
 	}
