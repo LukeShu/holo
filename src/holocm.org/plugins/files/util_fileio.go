@@ -18,9 +18,7 @@
 *
 *******************************************************************************/
 
-package common
-
-//This file needs to be in an extra package to break an import cycle.
+package files
 
 import (
 	"io/ioutil"
@@ -28,77 +26,67 @@ import (
 	"syscall"
 )
 
-//IsManageableFile returns whether the file can be managed by Holo (i.e. is a
-//regular file or a symlink).
+// IsManageableFile returns whether the file can be managed by Holo
+// (i.e. is a regular file or a symlink).
 func IsManageableFile(path string) bool {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return false
 	}
-	return info.Mode().IsRegular() || IsFileInfoASymbolicLink(info)
+	return IsManageableFileInfo(info)
 }
 
-//IsManageableFileInfo returns whether the given FileInfo refers to a
-//manageable file (i.e. a regular file or a symlink).
+// IsManageableFileInfo returns whether the given FileInfo refers to a
+// manageable file (i.e. a regular file or a symlink).
 func IsManageableFileInfo(info os.FileInfo) bool {
-	return info.Mode().IsRegular() || IsFileInfoASymbolicLink(info)
+	return info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0
 }
 
-//IsFileInfoASymbolicLink returns whether the given FileInfo describes a symlink.
-func IsFileInfoASymbolicLink(fileInfo os.FileInfo) bool {
-	return (fileInfo.Mode() & os.ModeType) == os.ModeSymlink
-}
-
-//CopyFile copies a regular file or symlink, including the file metadata.
+// CopyFile copies a regular file or symlink, including the file
+// metadata.
 func CopyFile(fromPath, toPath string) error {
 	info, err := os.Lstat(fromPath)
 	if err != nil {
 		return err
 	}
 	if info.Mode().IsRegular() {
-		return copyFileImpl(fromPath, toPath)
-	}
-	return copySymlinkImpl(fromPath, toPath)
-}
-
-func copyFileImpl(fromPath, toPath string) error {
-	//copy contents
-	data, err := ioutil.ReadFile(fromPath)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(toPath, data, 0600)
-	if err != nil {
-		return err
-	}
-
-	return ApplyFilePermissions(fromPath, toPath)
-}
-
-func copySymlinkImpl(fromPath, toPath string) error {
-	//read link target
-	target, err := os.Readlink(fromPath)
-	if err != nil {
-		return err
-	}
-	//remove old file or link if it exists
-	if IsManageableFile(toPath) {
-		err = os.Remove(toPath)
+		// regular file
+		data, err := ioutil.ReadFile(fromPath)
 		if err != nil {
 			return err
 		}
-	}
-	//create new link
-	err = os.Symlink(target, toPath)
-	if err != nil {
-		return err
-	}
+		err = ioutil.WriteFile(toPath, data, 0600)
+		if err != nil {
+			return err
+		}
+		return ApplyFilePermissions(fromPath, toPath)
+	} else {
+		// symbolic link
 
-	return nil
+		//read link target
+		target, err := os.Readlink(fromPath)
+		if err != nil {
+			return err
+		}
+		//remove old file or link if it exists
+		if IsManageableFile(toPath) {
+			err = os.Remove(toPath)
+			if err != nil {
+				return err
+			}
+		}
+		//create new link
+		err = os.Symlink(target, toPath)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
 }
 
-//MoveFile is like CopyFile, but it removes the fromPath after successful
-//copying.
+// MoveFile is like CopyFile, but it removes the fromPath after
+// successful copying.
 func MoveFile(fromPath, toPath string) error {
 	err := CopyFile(fromPath, toPath)
 	if err != nil {
@@ -107,8 +95,8 @@ func MoveFile(fromPath, toPath string) error {
 	return os.Remove(fromPath)
 }
 
-//ApplyFilePermissions applies permission flags and ownership
-//from the first file to the second file.
+// ApplyFilePermissions applies permission flags and ownership from
+// the first file to the second file.
 func ApplyFilePermissions(fromPath, toPath string) error {
 	//apply permissions, ownership, modification date from source file to target file
 	//NOTE: We cannot just pass the FileMode in WriteFile(), because its
@@ -123,7 +111,7 @@ func ApplyFilePermissions(fromPath, toPath string) error {
 		return err
 	}
 
-	if !IsFileInfoASymbolicLink(targetInfo) {
+	if targetInfo.Mode()&os.ModeSymlink == 0 {
 		//apply permissions
 		err = os.Chmod(toPath, info.Mode())
 		if err != nil {

@@ -18,16 +18,16 @@
 *
 *******************************************************************************/
 
-package platform
+package files
 
-//genericImpl provides the platform.Impl for unrecognized Linux distributions
-//or generic unit tests.
-type genericImpl struct{}
+// pmNone provides the PackageManager for unrecognized operating
+// systems or generic unit tests.
+type pmNone struct{}
 
-func (p genericImpl) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+func (p pmNone) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
 	return "", "", nil
 }
 
-func (p genericImpl) AdditionalCleanupTargets(targetPath string) []string {
+func (p pmNone) AdditionalCleanupTargets(targetPath string) []string {
 	return nil
 }

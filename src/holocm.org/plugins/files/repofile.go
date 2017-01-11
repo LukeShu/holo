@@ -18,63 +18,72 @@
 *
 *******************************************************************************/
 
-package impl
+package files
 
 import (
 	"fmt"
 	"path/filepath"
 	"strings"
-
-	"holocm.org/cmd/holo-files/common"
 )
 
-//RepoFile represents a single file in the configuration repository. The string
-//stored in it is the path to the repo file (also accessible as Path()).
-type RepoFile string
+// RepoFile represents a single file in the configuration repository.
+// The string stored in it is the path to the repo file (also
+// accessible as Path()).
+type RepoFile struct {
+	path   string
+	plugin FilesPlugin
+}
 
-//NewRepoFile creates a RepoFile instance when its path in the file system is
-//known.
-func NewRepoFile(path string) RepoFile {
-	return RepoFile(path)
+// NewRepoFile creates a RepoFile instance when its path in the file
+// system is known.
+func (p FilesPlugin) NewRepoFile(path string) RepoFile {
+	return RepoFile{path, p}
 }
 
 //Path returns the path to this repo file in the file system.
 func (file RepoFile) Path() string {
-	return string(file)
+	return file.path
 }
 
 //TargetPath returns the path to the corresponding target file.
 func (file RepoFile) TargetPath() string {
-	//the optional ".holoscript" suffix appears only on repo files
+	// the optional ".holoscript" suffix appears only on repo
+	// files
 	repoFile := file.Path()
 	if strings.HasSuffix(repoFile, ".holoscript") {
 		repoFile = strings.TrimSuffix(repoFile, ".holoscript")
 	}
 
-	//make path relative
-	relPath, _ := filepath.Rel(common.ResourceDirectory(), repoFile)
-	//remove the disambiguation path element to get to the relPath for the ConfigFile
-	//e.g. repoFile = '/usr/share/holo/files/23-foo/etc/foo.conf'
+	// make path relative
+	relPath, _ := filepath.Rel(file.plugin.resourceDirectory(), repoFile)
+
+	// remove the disambiguation path element to get to the
+	// relPath for the ConfigFile
+	//
+	// e.g.
+	//
+	//     repoFile = '/usr/share/holo/files/23-foo/etc/foo.conf'
 	//  -> relPath  = '23-foo/etc/foo.conf'
 	//  -> relPath  = 'etc/foo.conf'
 	segments := strings.SplitN(relPath, fmt.Sprintf("%c", filepath.Separator), 2)
 	relPath = segments[1]
 
-	return filepath.Join(common.TargetDirectory(), relPath)
+	return filepath.Join(file.plugin.targetDirectory(), relPath)
 }
 
-//Disambiguator returns the disambiguator, i.e. the Path() element before the
-//TargetPath() that disambiguates multiple repo entries for the same target file.
+// Disambiguator returns the disambiguator, i.e. the Path() element
+// before the TargetPath() that disambiguates multiple repo entries
+// for the same target file.
 func (file RepoFile) Disambiguator() string {
 	//make path relative to ResourceDirectory()
-	relPath, _ := filepath.Rel(common.ResourceDirectory(), file.Path())
+	relPath, _ := filepath.Rel(file.plugin.resourceDirectory(), file.Path())
 	//the disambiguator is the first path element in there
 	segments := strings.SplitN(relPath, fmt.Sprintf("%c", filepath.Separator), 2)
 	return segments[0]
 }
 
-//ApplicationStrategy returns the human-readable name for the strategy that
-//will be employed to apply this repo file.
+// ApplicationStrategy returns the human-readable name for the
+// strategy that will be employed to apply this repo file.
 func (file RepoFile) ApplicationStrategy() string {
 	if strings.HasSuffix(file.Path(), ".holoscript") {
 		return "passthru"
@@ -82,16 +91,17 @@ func (file RepoFile) ApplicationStrategy() string {
 	return "apply"
 }
 
-//DiscardsPreviousBuffer indicates whether applying this file will discard the
-//previous file buffer (and thus the effect of all previous application steps).
-//This is used as a hint by the application algorithm to decide whether
-//application steps can be skipped completely.
+// DiscardsPreviousBuffer indicates whether applying this file will
+// discard the previous file buffer (and thus the effect of all
+// previous application steps).  This is used as a hint by the
+// application algorithm to decide whether application steps can be
+// skipped completely.
 func (file RepoFile) DiscardsPreviousBuffer() bool {
 	return file.ApplicationStrategy() == "apply"
 }
 
-//RepoFiles holds a slice of RepoFile instances, and implements some methods
-//to satisfy the sort.Interface interface.
+// RepoFiles holds a slice of RepoFile instances, and implements some
+// methods to satisfy the sort.Interface interface.
 type RepoFiles []RepoFile
 
 func (f RepoFiles) Len() int           { return len(f) }

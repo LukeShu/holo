@@ -54,7 +54,7 @@ func AcquireLockfile() {
 				fmt.Fprintln(Stderr, "If not, you can try to delete the lock file manually.")
 			}
 		}
-		Exit(255)
+		os.Exit(255)
 	}
 	fmt.Fprintf(lockFile, "%d\n", os.Getpid())
 	lockFile.Sync()

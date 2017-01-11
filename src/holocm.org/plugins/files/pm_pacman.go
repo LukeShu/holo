@@ -18,24 +18,23 @@
 *
 *******************************************************************************/
 
-package platform
+package files
 
-import "holocm.org/cmd/holo-files/common"
+// pmPacman provides the PackageManager for pacman/libalpm-base
+// distributions (Arch Linux and derivatives).
+type pmPacman struct{}
 
-//archImpl provides the platform.Impl for Arch Linux and derivatives.
-type archImpl struct{}
-
-func (p archImpl) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
 	pacnewPath := targetPath + ".pacnew"
-	if common.IsManageableFile(pacnewPath) {
+	if IsManageableFile(pacnewPath) {
 		return pacnewPath, pacnewPath, nil
 	}
 	return "", "", nil
 }
 
-func (p archImpl) AdditionalCleanupTargets(targetPath string) []string {
+func (p pmPacman) AdditionalCleanupTargets(targetPath string) []string {
 	pacsavePath := targetPath + ".pacsave"
-	if common.IsManageableFile(pacsavePath) {
+	if IsManageableFile(pacsavePath) {
 		return []string{pacsavePath}
 	}
 	return nil

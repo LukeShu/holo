@@ -21,87 +21,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	"holocm.org/cmd/holo-files/common"
-	"holocm.org/cmd/holo-files/impl"
+	"holocm.org/lib/holoplugin"
+	"holocm.org/plugins/files"
 )
 
 func main() {
-	//the "info" action does not require any scanning
-	if os.Args[1] == "info" {
-		os.Stdout.Write([]byte("MIN_API_VERSION=3\nMAX_API_VERSION=3\n"))
-		return
-	}
-
-	//scan for entities
-	entities := impl.ScanRepo()
-	if entities == nil {
-		//some fatal error occurred - it was already reported, so just exit
-		os.Exit(1)
-	}
-
-	//scan action requires no arguments
-	if os.Args[1] == "scan" {
-		for _, entity := range entities {
-			entity.PrintReport()
-		}
-		return
-	}
-
-	//all other actions require an entity selection
-	entityID := os.Args[2]
-	var selectedEntity *impl.TargetFile
-	for _, entity := range entities {
-		if entity.EntityID() == entityID {
-			selectedEntity = entity
-			break
-		}
-	}
-	if selectedEntity == nil {
-		fmt.Fprintf(os.Stderr, "!! unknown entity ID \"%s\"\n", entityID)
-		os.Exit(1)
-	}
-
-	switch os.Args[1] {
-	case "apply":
-		applyEntity(selectedEntity, false)
-	case "force-apply":
-		applyEntity(selectedEntity, true)
-	case "diff":
-		output := fmt.Sprintf("%s\000%s\000",
-			selectedEntity.PathIn(common.ProvisionedDirectory()),
-			selectedEntity.PathIn(common.TargetDirectory()),
-		)
-		_, err := os.NewFile(3, "file descriptor 3").Write([]byte(output))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-		}
-	}
-}
-
-func applyEntity(entity *impl.TargetFile, withForce bool) {
-	skipReport, needForceToOverwrite, needForceToRestore := entity.Apply(withForce)
-
-	if skipReport {
-		_, err := os.NewFile(3, "file descriptor 3").Write([]byte("not changed\n"))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-		}
-	}
-
-	if needForceToOverwrite {
-		_, err := os.NewFile(3, "file descriptor 3").Write([]byte("requires --force to overwrite\n"))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-		}
-	}
-
-	if needForceToRestore {
-		_, err := os.NewFile(3, "file descriptor 3").Write([]byte("requires --force to restore\n"))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-		}
-	}
+	holoplugin.Main(files.NewFilesPlugin)
 }

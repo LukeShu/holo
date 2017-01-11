@@ -18,31 +18,29 @@
 *
 *******************************************************************************/
 
-package impl
+package files
 
 import (
 	"fmt"
 	"os"
-
-	"holocm.org/cmd/holo-files/common"
-	"holocm.org/cmd/holo-files/platform"
 )
 
-//scanOrphanedTargetBase locates a target file for a given orphaned target base
-//and assesses the situation. This logic is grouped in one function because
-//it's used by both `holo scan` and `holo apply`.
+// scanOrphanedTargetBase locates a target file for a given orphaned
+// target base and assesses the situation. This logic is grouped in
+// one function because it's used by both `holo scan` and `holo
+// apply`.
 func (target *TargetFile) scanOrphanedTargetBase() (theTargetPath, strategy, assessment string) {
-	targetPath := target.PathIn(common.TargetDirectory())
-	if common.IsManageableFile(targetPath) {
+	targetPath := target.PathIn(target.plugin.targetDirectory())
+	if IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
 	return targetPath, "delete", "target was deleted"
 }
 
-//applyOrphan cleans up an orphaned target base.
-func (target *TargetFile) applyOrphan() []error {
+// handleOrphanedTargetBase cleans up an orphaned target base.
+func (target *TargetFile) handleOrphanedTargetBase() []error {
 	targetPath, strategy, _ := target.scanOrphanedTargetBase()
-	targetBasePath := target.PathIn(common.TargetBaseDirectory())
+	targetBasePath := target.PathIn(target.plugin.targetBaseDirectory())
 
 	var errs []error
 	appendError := func(err error) {
@@ -56,7 +54,7 @@ func (target *TargetFile) applyOrphan() []error {
 		//if the package management left behind additional cleanup targets
 		//(most likely a backup of our custom configuration), we can delete
 		//these too
-		cleanupTargets := platform.Implementation().AdditionalCleanupTargets(targetPath)
+		cleanupTargets := GetPackageManager().AdditionalCleanupTargets(targetPath)
 		for _, otherFile := range cleanupTargets {
 			fmt.Printf(">> also deleting %s\n", otherFile)
 			appendError(os.Remove(otherFile))
@@ -64,7 +62,7 @@ func (target *TargetFile) applyOrphan() []error {
 	case "restore":
 		//target is still there - restore the target base, *but* before that,
 		//check if there is an updated target base
-		updatedTBPath, reportedTBPath, err := platform.Implementation().FindUpdatedTargetBase(targetPath)
+		updatedTBPath, reportedTBPath, err := GetPackageManager().FindUpdatedTargetBase(targetPath)
 		appendError(err)
 		if updatedTBPath != "" {
 			fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, targetPath)
@@ -74,11 +72,11 @@ func (target *TargetFile) applyOrphan() []error {
 		}
 
 		//now really restore the target base
-		appendError(common.CopyFile(targetBasePath, targetPath))
+		appendError(CopyFile(targetBasePath, targetPath))
 	}
 
 	//target is not managed by Holo anymore, so delete the provisioned target and the target base
-	lastProvisionedPath := target.PathIn(common.ProvisionedDirectory())
+	lastProvisionedPath := target.PathIn(target.plugin.provisionedDirectory())
 	err := os.Remove(lastProvisionedPath)
 	if err != nil && !os.IsNotExist(err) {
 		appendError(err)

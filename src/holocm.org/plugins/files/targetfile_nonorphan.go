@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package impl
+package files
 
 import (
 	"errors"
@@ -26,65 +26,67 @@ import (
 	"os"
 	"path/filepath"
 
-	"holocm.org/cmd/holo-files/common"
-	"holocm.org/cmd/holo-files/platform"
+	"holocm.org/lib/holo"
 )
 
-//applyNonOrphan performs the complete application algorithm for the given TargetFile.
-//This includes taking a copy of the target base if necessary, applying all
-//repository entries, and saving the result in the target path with the correct
-//file metadata.
-func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err error) {
-	//determine the related paths
-	targetPath := target.PathIn(common.TargetDirectory())
-	targetBasePath := target.PathIn(common.TargetBaseDirectory())
+// Apply performs the complete application algorithm for the given
+// TargetFile.  This includes taking a copy of the target base if
+// necessary, applying all repository entries, and saving the result
+// in the target path with the correct file metadata.
+func (target *TargetFile) apply(withForce bool) (holo.ApplyResult, error) {
+	// determine the related paths
+	targetPath := target.PathIn(target.plugin.targetDirectory())
+	targetBasePath := target.PathIn(target.plugin.targetBaseDirectory())
 
-	//step 1: will only apply targets if:
-	//option 1: there is a manageable file in the target location (this target
-	//file is either the target base from the application package or the
-	//product of a previous Apply run)
-	//option 2: the target file was deleted, but we have a target base that we
-	//can start from
+	// step 1: will only apply targets if:
+	//
+	// - option 1: there is a manageable file in the target
+	//   location (this target file is either the target base from
+	//   the application package or the product of a previous
+	//   Apply run)
+	//
+	// - option 2: the target file was deleted, but we have a
+	//   target base that we can start from
 	needForcefulReprovision := false
-	targetExists := common.IsManageableFile(targetPath)
+	targetExists := IsManageableFile(targetPath)
 	if !targetExists {
-		if !common.IsManageableFile(targetBasePath) {
-			return false, errors.New("skipping target: not a manageable file")
+		if !IsManageableFile(targetBasePath) {
+			return nil, errors.New("skipping target: not a manageable file")
 		}
 		if withForce {
 			needForcefulReprovision = true
 		} else {
-			return false, ErrNeedForceToRestore
+			return holo.ApplyExternallyDeleted, nil
 		}
 	}
 
 	//step 2: if we don't have a target base yet, the file at targetPath *is*
 	//the targetBase which we have to copy now
-	if !common.IsManageableFile(targetBasePath) {
+	if !IsManageableFile(targetBasePath) {
 		targetBaseDir := filepath.Dir(targetBasePath)
 		err := os.MkdirAll(targetBaseDir, 0755)
 		if err != nil {
-			return false, fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error())
+			return nil, fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error())
 		}
 
-		err = common.CopyFile(targetPath, targetBasePath)
+		err = CopyFile(targetPath, targetBasePath)
 		if err != nil {
-			return false, fmt.Errorf("Cannot copy %s to %s: %s", targetPath, targetBasePath, err.Error())
+			return nil, fmt.Errorf("Cannot copy %s to %s: %s", targetPath, targetBasePath, err.Error())
 		}
 	}
 
 	//step 3: check if a system update installed a new version of the stock
 	//configuration
-	updatedTBPath, reportedTBPath, err := platform.Implementation().FindUpdatedTargetBase(targetPath)
+	updatedTBPath, reportedTBPath, err := GetPackageManager().FindUpdatedTargetBase(targetPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	if updatedTBPath != "" {
 		//an updated stock configuration is available at updatedTBPath
 		fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
-		err := common.CopyFile(updatedTBPath, targetBasePath)
+		err := CopyFile(updatedTBPath, targetBasePath)
 		if err != nil {
-			return false, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
+			return nil, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
 		}
 		_ = os.Remove(updatedTBPath) //this can fail silently
 	}
@@ -96,11 +98,11 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 
 	//load the last provisioned version
 	var lastProvisionedBuffer *FileBuffer
-	lastProvisionedPath := target.PathIn(common.ProvisionedDirectory())
-	if common.IsManageableFile(lastProvisionedPath) {
+	lastProvisionedPath := target.PathIn(target.plugin.provisionedDirectory())
+	if IsManageableFile(lastProvisionedPath) {
 		lastProvisionedBuffer, err = NewFileBuffer(lastProvisionedPath, targetPath)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 	}
 
@@ -109,13 +111,13 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	if targetExists && lastProvisionedBuffer != nil {
 		targetBuffer, err := NewFileBuffer(targetPath, targetPath)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		if !targetBuffer.EqualTo(lastProvisionedBuffer) {
 			if withForce {
 				needForcefulReprovision = true
 			} else {
-				return false, ErrNeedForceToOverwrite
+				return holo.ApplyExternallyChanged, nil
 			}
 		}
 	}
@@ -137,7 +139,7 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	if firstStep == -1 {
 		buffer, err = NewFileBuffer(targetBasePath, targetPath)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 	} else {
 		buffer = NewFileBufferFromContents([]byte(nil), targetPath)
@@ -149,9 +151,9 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 		repoEntries = repoEntries[firstStep:]
 	}
 	for _, repoFile := range repoEntries {
-		buffer, err = GetApplyImpl(repoFile)(buffer)
+		buffer, err = repoFile.ApplyTo(buffer)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 	}
 
@@ -159,7 +161,7 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	if !needForcefulReprovision && lastProvisionedBuffer != nil {
 		if buffer.EqualTo(lastProvisionedBuffer) {
 			//since we did not do anything, don't report this
-			return true, nil
+			return holo.ApplyAlreadyApplied, nil
 		}
 	}
 
@@ -168,15 +170,15 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	provisionedDir := filepath.Dir(lastProvisionedPath)
 	err = os.MkdirAll(provisionedDir, 0755)
 	if err != nil {
-		return false, fmt.Errorf("Cannot write %s: %s", lastProvisionedPath, err.Error())
+		return nil, fmt.Errorf("Cannot write %s: %s", lastProvisionedPath, err.Error())
 	}
 	err = buffer.Write(lastProvisionedPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	err = common.ApplyFilePermissions(targetBasePath, lastProvisionedPath)
+	err = ApplyFilePermissions(targetBasePath, lastProvisionedPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	//write the result buffer to the target location and copy
@@ -184,13 +186,17 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	newTargetPath := targetPath + ".holonew"
 	err = buffer.Write(newTargetPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	err = common.ApplyFilePermissions(targetBasePath, newTargetPath)
+	err = ApplyFilePermissions(targetBasePath, newTargetPath)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	//move $target.holonew -> $target atomically (to ensure that there is
 	//always a valid file at $target)
-	return false, os.Rename(newTargetPath, targetPath)
+	err = os.Rename(newTargetPath, targetPath)
+	if err != nil {
+		return nil, err
+	}
+	return holo.ApplyApplied, nil
 }

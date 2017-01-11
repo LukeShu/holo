@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package impl
+package files
 
 import (
 	"bytes"
@@ -26,12 +26,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"holocm.org/cmd/holo-files/common"
 )
 
-//FileBuffer represents the contents of a file. It is used in holo.Apply() as
-//an intermediary product of application steps.
+// FileBuffer represents the contents of a file. It is used in
+// HoloApply() as an intermediary product of application steps.
 type FileBuffer struct {
 	//set only for regular files
 	Contents []byte
@@ -41,9 +39,9 @@ type FileBuffer struct {
 	BasePath string
 }
 
-//NewFileBuffer creates a FileBuffer object by reading the manageable file at
-//the given path. The basePath is stored in the FileBuffer for use in
-//holo.FileBuffer.ResolveSymlink().
+// NewFileBuffer creates a FileBuffer object by reading the manageable
+// file at the given path. The basePath is stored in the FileBuffer
+// for use in FileBuffer.ResolveSymlink().
 func NewFileBuffer(path string, basePath string) (*FileBuffer, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
@@ -51,7 +49,7 @@ func NewFileBuffer(path string, basePath string) (*FileBuffer, error) {
 	}
 
 	//a manageable file is either a symlink...
-	if common.IsFileInfoASymbolicLink(info) {
+	if info.Mode()&os.ModeSymlink != 0 {
 		target, err := os.Readlink(path)
 		if err != nil {
 			return nil, err
@@ -78,15 +76,15 @@ func NewFileBuffer(path string, basePath string) (*FileBuffer, error) {
 
 	//other types of files are not acceptable
 	return nil, &os.PathError{
-		Op:   "holo.NewFileBuffer",
+		Op:   "holocm.org/plugins/files.NewFileBuffer",
 		Path: path,
 		Err:  errors.New("not a manageable file"),
 	}
 }
 
-//NewFileBufferFromContents creates a file buffer containing the given byte
-//array. The basePath is stored in the FileBuffer for use in
-//holo.FileBuffer.ResolveSymlink().
+// NewFileBufferFromContents creates a file buffer containing the
+// given byte array. The basePath is stored in the FileBuffer for use
+// in FileBuffer.ResolveSymlink().
 func NewFileBufferFromContents(fileContents []byte, basePath string) *FileBuffer {
 	return &FileBuffer{
 		Contents:      fileContents,
@@ -103,9 +101,9 @@ func (fb *FileBuffer) Write(path string) error {
 		return err
 	}
 	if err == nil {
-		if !(info.Mode().IsRegular() || common.IsFileInfoASymbolicLink(info)) {
+		if !IsManageableFileInfo(info) {
 			return &os.PathError{
-				Op:   "holo.FileBuffer.Write",
+				Op:   "holocm.org/plugins/files.FileBuffer.Write",
 				Path: path,
 				Err:  errors.New("target exists and is not a manageable file"),
 			}

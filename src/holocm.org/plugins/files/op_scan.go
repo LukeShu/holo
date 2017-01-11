@@ -18,29 +18,27 @@
 *
 *******************************************************************************/
 
-package impl
+package files
 
 import (
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"holocm.org/cmd/holo-files/common"
 )
 
-//ScanRepo returns a slice of all the TargetFile entities.
-func ScanRepo() []*TargetFile {
+// ScanRepo returns a slice of all the TargetFile entities.
+func (p FilesPlugin) ScanRepo() []*TargetFile {
 	//walk over the repo to find repo files (and thus the corresponding target files)
 	targets := make(map[string]*TargetFile)
-	repoDir := common.ResourceDirectory()
+	repoDir := p.resourceDirectory()
 	filepath.Walk(repoDir, func(repoPath string, repoFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !(repoFileInfo.Mode().IsRegular() || common.IsFileInfoASymbolicLink(repoFileInfo)) {
+		if !IsManageableFileInfo(repoFileInfo) {
 			return nil
 		}
 		//don't consider repoDir itself to be a repo entry (it might be a symlink)
@@ -55,24 +53,24 @@ func ScanRepo() []*TargetFile {
 		}
 
 		//create new TargetFile if necessary and store the repo entry in it
-		repoEntry := NewRepoFile(repoPath)
+		repoEntry := p.NewRepoFile(repoPath)
 		targetPath := repoEntry.TargetPath()
 		if targets[targetPath] == nil {
-			targets[targetPath] = NewTargetFileFromPathIn(common.TargetDirectory(), targetPath)
+			targets[targetPath] = p.NewTargetFileFromPathIn(p.targetDirectory(), targetPath)
 		}
 		targets[targetPath].AddRepoEntry(repoEntry)
 		return nil
 	})
 
 	//walk over the target base directory to find orphaned target bases
-	targetBaseDir := common.TargetBaseDirectory()
+	targetBaseDir := p.targetBaseDirectory()
 	filepath.Walk(targetBaseDir, func(targetBasePath string, targetBaseFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !(targetBaseFileInfo.Mode().IsRegular() || common.IsFileInfoASymbolicLink(targetBaseFileInfo)) {
+		if !IsManageableFileInfo(targetBaseFileInfo) {
 			return nil
 		}
 		//don't consider targetBaseDir itself to be a target base (it might be a symlink)
@@ -83,8 +81,8 @@ func ScanRepo() []*TargetFile {
 		//check if we have seen the config file for this target base
 		//(if not, it's orphaned)
 		//TODO: s/(targetBase)Path/\1Dir/g and s/(targetBase)File/Path/g
-		target := NewTargetFileFromPathIn(targetBaseDir, targetBasePath)
-		targetPath := target.PathIn(common.TargetDirectory())
+		target := p.NewTargetFileFromPathIn(targetBaseDir, targetBasePath)
+		targetPath := target.PathIn(p.targetDirectory())
 		if targets[targetPath] == nil {
 			target.orphaned = true
 			targets[targetPath] = target

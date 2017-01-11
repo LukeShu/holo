@@ -18,44 +18,24 @@
 *
 *******************************************************************************/
 
-package common
-
-import (
-	"os"
-	"strings"
-)
-
-var (
-	targetDirectory   string
-	stateDirectory    string
-	resourceDirectory string
-)
-
-func init() {
-	targetDirectory = strings.TrimSuffix(os.Getenv("HOLO_ROOT_DIR"), "/")
-	if targetDirectory == "" {
-		targetDirectory = "/"
-	}
-	stateDirectory = strings.TrimSuffix(os.Getenv("HOLO_STATE_DIR"), "/")
-	resourceDirectory = strings.TrimSuffix(os.Getenv("HOLO_RESOURCE_DIR"), "/")
-}
+package files
 
 //TargetDirectory is $HOLO_ROOT_DIR (or "/" if not set).
-func TargetDirectory() string {
-	return targetDirectory
+func (p FilesPlugin) targetDirectory() string {
+	return p.Runtime.RootDirPath
 }
 
 //ResourceDirectory is $HOLO_RESOURCE_DIR.
-func ResourceDirectory() string {
-	return resourceDirectory
+func (p FilesPlugin) resourceDirectory() string {
+	return p.Runtime.ResourceDirPath
 }
 
 //TargetBaseDirectory is $HOLO_STATE_DIR/base.
-func TargetBaseDirectory() string {
-	return stateDirectory + "/base"
+func (p FilesPlugin) targetBaseDirectory() string {
+	return p.Runtime.StateDirPath + "/base"
 }
 
 //ProvisionedDirectory is $HOLO_STATE_DIR/provisioned.
-func ProvisionedDirectory() string {
-	return stateDirectory + "/provisioned"
+func (p FilesPlugin) provisionedDirectory() string {
+	return p.Runtime.StateDirPath + "/provisioned"
 }
