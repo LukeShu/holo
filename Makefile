@@ -11,8 +11,8 @@ all: $(addprefix man/,$(mans))
 src/holocm.org/cmd/holo/version.go: FORCE
 	printf 'package main\n\nconst version = "%s"\n' "$$( ./util/find_version.sh)" | util/write-ifchanged $@
 
-%/holo %/holo-files: FORCE src/holocm.org/cmd/holo/version.go
-	GOPATH=$(dir $(abspath $*)) go install $(GO_BUILDFLAGS) --ldflags '$(GO_LDFLAGS)' holocm.org/cmd/holo holocm.org/cmd/holo-files
+%/holo %/holo-files %/tinyholo: FORCE src/holocm.org/cmd/holo/version.go
+	GOPATH=$(dir $(abspath $*)) go install $(GO_BUILDFLAGS) --ldflags '$(GO_LDFLAGS)' holocm.org/cmd/holo holocm.org/cmd/holo-files holocm.org/cmd/tinyholo
 
 man:
 	mkdir $@
