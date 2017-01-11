@@ -19,18 +19,6 @@
 *
 *******************************************************************************/
 
-package entrypoint
-
-import (
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-
-	"github.com/holocm/holo/cmd/holo/internal/impl"
-	"github.com/holocm/holo/cmd/holo/internal/output"
-)
-
 // Package impl implements most of the "holo" program; as a set of
 // modular pieces.
 //
@@ -38,6 +26,27 @@ import (
 // shared state between them... mostly.  The "output" package does
 // provide some share global state; but it all takes place in the
 // "output" package, not here.
+package impl
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
+	"github.com/holocm/holo/cmd/holo/internal/output"
+)
+
+// Main ties together all of the other parts of this package, and
+// provides a user interface to them.
+//
+// All you have to do is provide it with:
+//
+//  1. a root directory path to operate in
+//  2. a version string to show to the user
+//  3. a function for instantiating plugins
+//
+// What it does is:
 //
 // 1. Call "NewConfigReader(rootDir)" to get a LineReader that will
 // read lines from all of the relevant configuration files.
@@ -82,16 +91,16 @@ import (
 //
 //     ----
 //
-// All that remains for the calling program to do is option parsing
-// and user-interface concerns.
-func _Main(rootDir, version string, getPlugin impl.PluginGetter) (exitCode int) {
+// Most of the complexity of this function is dealing with
+// option-parsing and user-interface concerns.
+func Main(rootDir, version string, getPlugin PluginGetter) (exitCode int) {
 	const (
 		optionApplyForce = iota
 		optionScanShort
 		optionScanPorcelain
 	)
 
-	var runtimeManager *impl.RuntimeManager
+	var runtimeManager *RuntimeManager
 
 	help := func(w io.Writer) {
 		program := os.Args[0]
@@ -110,30 +119,30 @@ func _Main(rootDir, version string, getPlugin impl.PluginGetter) (exitCode int) 
 	}
 
 	//check that it is a known command word
-	var command func([]*impl.EntityHandle, map[int]bool) int
+	var command func([]*EntityHandle, map[int]bool) int
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
-		command = func(e []*impl.EntityHandle, options map[int]bool) int {
-			pidFile := impl.AcquirePidFile(filepath.Join(rootDir, "run/holo.pid"))
+		command = func(e []*EntityHandle, options map[int]bool) int {
+			pidFile := AcquirePidFile(filepath.Join(rootDir, "run/holo.pid"))
 			if pidFile == nil {
 				return 255
 			}
 			defer pidFile.Release()
-			return impl.CommandApply(e, options[optionApplyForce])
+			return CommandApply(e, options[optionApplyForce])
 		}
 	case "diff":
-		command = func(e []*impl.EntityHandle, options map[int]bool) int {
-			return impl.CommandDiff(e)
+		command = func(e []*EntityHandle, options map[int]bool) int {
+			return CommandDiff(e)
 		}
 	case "scan":
 		knownOpts = map[string]int{
 			"-s": optionScanShort, "--short": optionScanShort,
 			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
 		}
-		command = func(e []*impl.EntityHandle, options map[int]bool) int {
-			return impl.CommandScan(e, options[optionScanPorcelain], options[optionScanShort])
+		command = func(e []*EntityHandle, options map[int]bool) int {
+			return CommandScan(e, options[optionScanPorcelain], options[optionScanShort])
 		}
 	case "version", "--version":
 		fmt.Println(version)
@@ -146,32 +155,32 @@ func _Main(rootDir, version string, getPlugin impl.PluginGetter) (exitCode int) 
 		return 2
 	}
 
+	// load configuration
+	configReader, err := NewConfigReader(rootDir)
+	if err != nil {
+		output.Errorf(output.Stderr, "%s", err.Error())
+		return 255
+	}
+	config, err := ReadConfig(configReader)
+	if err != nil {
+		output.Errorf(output.Stderr, "%s", err.Error())
+		return 255
+	}
+
+	// load plugins
+	runtimeManager, err = NewRuntimeManager(rootDir)
+	if err != nil {
+		return 255
+	}
+	defer runtimeManager.Close()
+	plugins := runtimeManager.GetPlugins(config.Plugins, getPlugin)
+	if plugins == nil {
+		// some fatal error occurred - it was already
+		// reported, so just exit
+		return 255
+	}
+
 	if true {
-		// load configuration
-		configReader, err := impl.NewConfigReader(rootDir)
-		if err != nil {
-			output.Errorf(output.Stderr, "%s", err.Error())
-			return 255
-		}
-		config, err := impl.ReadConfig(configReader)
-		if err != nil {
-			output.Errorf(output.Stderr, "%s", err.Error())
-			return 255
-		}
-
-		// load plugins
-		runtimeManager, err = impl.NewRuntimeManager(rootDir)
-		if err != nil {
-			return 255
-		}
-		defer runtimeManager.Close()
-		plugins := runtimeManager.GetPlugins(config.Plugins, getPlugin)
-		if plugins == nil {
-			// some fatal error occurred - it was already
-			// reported, so just exit
-			return 255
-		}
-
 		// parse command line -- classify each argument as either a
 		// selector-string or an option-flag.
 		args := os.Args[2:]
@@ -187,13 +196,13 @@ func _Main(rootDir, version string, getPlugin impl.PluginGetter) (exitCode int) 
 		}
 
 		// ask all plugins to scan for entities
-		entities, err := impl.GetAllEntities(plugins)
+		entities, err := GetAllEntities(plugins)
 		if err != nil {
 			output.Errorf(output.Stderr, "%s", err.Error())
 			return 255
 		}
 		if len(selectors) > 0 {
-			entities = impl.FilterEntities(entities, selectors)
+			entities = FilterEntities(entities, selectors)
 		}
 
 		// Were there unrecognized selectors?
@@ -208,8 +217,9 @@ func _Main(rootDir, version string, getPlugin impl.PluginGetter) (exitCode int) 
 			return 255
 		}
 
-		//execute command
+		// execute command
 		return command(entities, options)
+
 	}
 	panic("not reached")
 }

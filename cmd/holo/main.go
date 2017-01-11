@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 
 	"github.com/holocm/holo/cmd/holo/internal/externalplugin"
+	"github.com/holocm/holo/cmd/holo/internal/impl"
 	"github.com/holocm/holo/lib/holo"
 )
 
@@ -53,5 +54,5 @@ func Main() (exitCode int) {
 		return plugin, nil
 	}
 
-	return _Main(rootDir, version, getPlugin)
+	return impl.Main(rootDir, version, getPlugin)
 }
