@@ -18,48 +18,23 @@
 *
 *******************************************************************************/
 
-package impl
+package main
 
 import (
-	"fmt"
 	"os"
-
-	"holocm.org/cmd/holo/output"
 )
 
-func CommandApply(entities []*EntityHandle, withForce bool) {
-	for _, entity := range entities {
-		entity.Apply(withForce)
+var rootDir string
 
-		os.Stderr.Sync()
-		output.Stdout.EndParagraph()
-		os.Stdout.Sync()
+func init() {
+	rootDir = os.Getenv("HOLO_ROOT_DIR")
+	if rootDir == "" {
+		rootDir = "/"
 	}
 }
 
-func CommandScan(entities []*EntityHandle, isPorcelain, isShort bool) {
-	for _, entity := range entities {
-		switch {
-		case isPorcelain:
-			entity.PrintScanReport()
-		case isShort:
-			fmt.Println(entity.Entity.EntityID())
-		default:
-			entity.PrintReport(false)
-		}
-	}
-}
-
-func CommandDiff(entities []*EntityHandle) {
-	for _, entity := range entities {
-		dat, err := entity.RenderDiff()
-		if err != nil {
-			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.Entity.EntityID(), err.Error())
-		}
-		os.Stdout.Write(dat)
-
-		os.Stderr.Sync()
-		output.Stdout.EndParagraph()
-		os.Stdout.Sync()
-	}
+// RootDirectory returns the environment variable $HOLO_ROOT_DIR, or
+// else the default value "/".
+func RootDirectory() string {
+	return rootDir
 }

@@ -25,66 +25,35 @@ import (
 	"os"
 	"path/filepath"
 
-	"holocm.org/cmd/holo/output"
 	"holocm.org/lib/holo"
 )
 
-var (
+type RuntimeManager struct {
 	rootDir  string
 	cacheDir string
-)
+}
 
-func init() {
-	rootDir = os.Getenv("HOLO_ROOT_DIR")
-	if rootDir == "" {
-		rootDir = "/"
-	}
-
+func NewRuntimeManager(rootDir string) (*RuntimeManager, error) {
 	// TODO(lukeshu): Consider inspecting os.TempDir() to see if
 	// it is below rootDir.  I don't think it's important to do so
-	// because us ioutil.TempDir() avoids conflicts.
-	var err error
-	cacheDir, err = ioutil.TempDir(os.TempDir(), "holo.")
+	// because ioutil.TempDir() avoids conflicts.
+	cacheDir, err := ioutil.TempDir(os.TempDir(), "holo.")
 	if err != nil {
-		output.Errorf(output.Stderr, err.Error())
-		os.Exit(255)
+		return nil, err
 	}
+	return &RuntimeManager{rootDir: rootDir, cacheDir: cacheDir}, nil
 }
 
-// RootDirectory returns the environment variable $HOLO_ROOT_DIR, or
-// else the default value "/".
-func RootDirectory() string {
-	return rootDir
+func (r *RuntimeManager) Close() {
+	_ = os.RemoveAll(r.cacheDir) // fail silently
 }
 
-func Exit(code int) {
-	_ = os.RemoveAll(cacheDir) // fail silently
-	os.Exit(code)
-}
-
-func NewRuntime(id string) holo.Runtime {
+func (r *RuntimeManager) NewRuntime(id string) holo.Runtime {
 	return holo.Runtime{
 		APIVersion:      3,
-		RootDirPath:     RootDirectory(),
-		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(cacheDir, id),
-		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
+		RootDirPath:     r.rootDir,
+		ResourceDirPath: filepath.Join(r.rootDir, "usr/share/holo", id),
+		CacheDirPath:    filepath.Join(r.cacheDir, id),
+		StateDirPath:    filepath.Join(r.rootDir, "var/lib/holo", id),
 	}
-}
-
-func SetupRuntime(r holo.Runtime) bool {
-	hasError := false
-	if _, err := os.Stat(r.ResourceDirPath + "/"); err != nil {
-		output.Errorf(output.Stderr, "Resource directory cannot be opened: %q: %v", r.ResourceDirPath, err)
-		hasError = true
-	}
-	if err := os.MkdirAll(r.StateDirPath, 0755); err != nil {
-		output.Errorf(output.Stderr, "State directory cannot be created: %q: %v", r.StateDirPath, err)
-		hasError = true
-	}
-	if err := os.MkdirAll(r.CacheDirPath, 0755); err != nil {
-		output.Errorf(output.Stderr, "Cache directory cannot be created: %q: %v", r.CacheDirPath, err)
-		hasError = true
-	}
-	return !hasError
 }

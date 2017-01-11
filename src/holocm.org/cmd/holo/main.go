@@ -36,11 +36,13 @@ const (
 	optionScanPorcelain
 )
 
+var runtimeManager *RuntimeManager
+
 func main() {
 	//a command word must be given as first argument
 	if len(os.Args) < 2 {
 		help(os.Stderr)
-		Exit(2)
+		exit(2)
 	}
 
 	//check that it is a known command word
@@ -52,48 +54,54 @@ func main() {
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
 		command = func(e []*impl.EntityHandle) {
 			if !AcquireLockfile() {
-				Exit(255)
+				exit(255)
 			}
 			defer ReleaseLockfile()
-			impl.Apply(e, options[optionApplyForce])
+			impl.CommandApply(e, options[optionApplyForce])
 		}
 	case "diff":
-		command = impl.Diff
+		command = impl.CommandDiff
 	case "scan":
 		knownOpts = map[string]int{
 			"-s": optionScanShort, "--short": optionScanShort,
 			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
 		}
 		command = func(e []*impl.EntityHandle) {
-			impl.Scan(e, options[optionScanPorcelain], options[optionScanShort])
+			impl.CommandScan(e, options[optionScanPorcelain], options[optionScanShort])
 		}
 	case "version", "--version":
 		fmt.Println(version)
-		Exit(0)
+		exit(0)
 	case "help", "--help":
 		help(os.Stdout)
-		Exit(0)
+		exit(0)
 	default:
 		help(os.Stderr)
-		Exit(2)
+		exit(2)
 	}
 
 	// load configuration
 	configReader, err := impl.NewConfigReader(RootDirectory())
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
-		Exit(255)
+		exit(255)
 	}
 	config, err := impl.ReadConfig(configReader)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
-		Exit(255)
+		exit(255)
 	}
-	plugins := GetPlugins(config.Plugins)
+
+	// load plugins
+	runtimeManager, err = NewRuntimeManager(RootDirectory())
+	if err != nil {
+		exit(255)
+	}
+	plugins := runtimeManager.GetPlugins(config.Plugins)
 	if plugins == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
-		Exit(255)
+		exit(255)
 	}
 
 	// parse command line -- classify each argument as either a
@@ -113,7 +121,7 @@ func main() {
 	entities, err := impl.GetAllEntities(plugins)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
-		Exit(255)
+		exit(255)
 	}
 	if len(selectors) > 0 {
 		entities = impl.FilterEntities(entities, selectors)
@@ -128,13 +136,13 @@ func main() {
 		}
 	}
 	if hasUnrecognizedArgs {
-		Exit(255)
+		exit(255)
 	}
 
 	//execute command
 	command(entities)
 
-	Exit(0)
+	exit(0)
 }
 
 func help(w io.Writer) {
@@ -146,4 +154,11 @@ func help(w io.Writer) {
 	fmt.Fprintf(w, "    %s --help\n", program)
 	fmt.Fprintf(w, "    %s --version\n", program)
 	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
+}
+
+func exit(code int) {
+	if runtimeManager != nil {
+		runtimeManager.Close()
+	}
+	os.Exit(code)
 }
