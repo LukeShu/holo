@@ -89,7 +89,7 @@ run_testcase() {
         if [ -f $FILE ]; then
             if diff -q expected-$FILE $FILE >/dev/null; then true; else
                 echo "!! The $FILE deviates from our expectation. Diff follows:"
-                diff -u expected-$FILE $FILE 2>&1 | sed 's/^/    /'
+                diff -u expected-$FILE $FILE 2>&1 | colordiff | sed 's/^/    /'
                 EXIT_CODE=1
             fi
         fi
