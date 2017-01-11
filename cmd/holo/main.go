@@ -70,10 +70,21 @@ func Main() (exitCode int) {
 	}
 
 	return impl.WithCacheDirectory(func() (exitCode int) {
-		//load configuration
-		config := impl.ReadConfiguration()
-		if config == nil {
-			//some fatal error occurred - it was already reported, so just exit
+		// load configuration
+		configReader, err := impl.NewConfigReader(impl.RootDirectory())
+		if err != nil {
+			output.Errorf(output.Stderr, "%s", err.Error())
+			return 255
+		}
+		config, err := impl.ReadConfig(configReader)
+		if err != nil {
+			output.Errorf(output.Stderr, "%s", err.Error())
+			return 255
+		}
+		plugins := impl.GetPlugins(config.Plugins)
+		if plugins == nil {
+			// some fatal error occurred - it was already
+			// reported, so just exit
 			return 255
 		}
 
@@ -92,7 +103,7 @@ func Main() (exitCode int) {
 		}
 
 		// ask all plugins to scan for entities
-		entities, err := impl.GetAllEntities(config.Plugins)
+		entities, err := impl.GetAllEntities(plugins)
 		if err != nil {
 			output.Errorf(output.Stderr, "%s", err.Error())
 			return 255

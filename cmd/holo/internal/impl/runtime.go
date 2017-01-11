@@ -79,7 +79,7 @@ func NewRuntime(id string) holo.Runtime {
 		APIVersion:      3,
 		RootDirPath:     RootDirectory(),
 		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(cachePath, id),
+		CacheDirPath:    filepath.Join(CachePath(), id),
 		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
 	}
 }
