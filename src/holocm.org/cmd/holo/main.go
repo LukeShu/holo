@@ -64,11 +64,12 @@ func main() {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
 		command = func(e []*impl.EntityHandle) {
-			if !AcquirePidfile(filepath.Join(rootDir, "run/holo.pid")) {
+			pidFile := impl.AcquirePidFile(filepath.Join(rootDir, "run/holo.pid"))
+			if pidFile == nil {
 				exit(255)
 			}
 			impl.CommandApply(e, options[optionApplyForce])
-			ReleasePidfile()
+			pidFile.Release()
 		}
 	case "diff":
 		command = impl.CommandDiff

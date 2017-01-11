@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package main
+package impl
 
 import (
 	"fmt"
@@ -27,34 +27,32 @@ import (
 	"holocm.org/cmd/holo/output"
 )
 
-var (
-	pidPath string
-	pidFile *os.File
-)
+type PidFile struct {
+	file *os.File
+}
 
-// AcquirePidfile will create a pid file to ensure that only one
+// AcquirePidFile will create a pid file to ensure that only one
 // instance of Holo is running at the same time.  Returns whether the
 // lock was successfully aquired.
-func AcquirePidfile(path string) bool {
-	var err error
-	pidPath = path
-	pidFile, err = os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+func AcquirePidFile(pidPath string) *PidFile {
+	file, err := os.OpenFile(pidPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		output.Errorf(output.Stderr, "Cannot create pid file %s: %s", pidPath, err.Error())
 		if os.IsExist(err) {
 			fmt.Fprintln(output.Stderr, "This usually means that another instance of Holo is currently running.")
 			fmt.Fprintln(output.Stderr, "If not, you can try to delete the pid file manually.")
 		}
-		return false
+		return nil
 	}
-	fmt.Fprintf(pidFile, "%d\n", os.Getpid())
-	pidFile.Sync()
-	return true
+	fmt.Fprintf(file, "%d\n", os.Getpid())
+	file.Sync()
+	return &PidFile{file}
 }
 
-// ReleasePidfile removes the pid file created by AcquirePidfile.
-func ReleasePidfile() {
-	err := pidFile.Close()
+// Release removes the pid file created by AcquirePidFile.
+func (pidFile *PidFile) Release() {
+	pidPath := pidFile.file.Name()
+	err := pidFile.file.Close()
 	if err != nil {
 		output.Errorf(output.Stderr, err.Error())
 	}
