@@ -31,7 +31,7 @@ import (
 	"github.com/holocm/holo/plugins/filesplugin"
 )
 
-func main() {
+func Main() int {
 	rootDir := os.Getenv("HOLO_ROOT_DIR")
 	if rootDir == "" {
 		rootDir = "/"
@@ -52,5 +52,9 @@ func main() {
 		return plugin, nil
 	}
 
-	impl.Main(rootDir, "tinyholo", getPlugin)
+	return impl.Main(rootDir, "tinyholo", getPlugin)
+}
+
+func main() {
+	os.Exit(Main())
 }
