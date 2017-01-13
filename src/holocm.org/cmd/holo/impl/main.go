@@ -93,7 +93,7 @@ import (
 //
 // Most of the complexity of this function is dealing with
 // option-parsing and user-interface concerns.
-func Main(rootDir, version string, getPlugin PluginGetter) {
+func Main(rootDir, version string, getPlugin PluginGetter) int {
 	const (
 		optionApplyForce = iota
 		optionScanShort
@@ -113,33 +113,26 @@ func Main(rootDir, version string, getPlugin PluginGetter) {
 		fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
 	}
 
-	exit := func(code int) {
-		if runtimeManager != nil {
-			runtimeManager.Close()
-		}
-		os.Exit(code)
-	}
-
 	// a command word must be given as first argument
 	if len(os.Args) < 2 {
 		help(os.Stderr)
-		exit(2)
+		return 2
 	}
 
 	//check that it is a known command word
-	var command func([]*EntityHandle)
+	var command func([]*EntityHandle) int
 	knownOpts := make(map[string]int)
 	options := make(map[int]bool)
 	switch os.Args[1] {
 	case "apply":
 		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
-		command = func(e []*EntityHandle) {
+		command = func(e []*EntityHandle) int {
 			pidFile := AcquirePidFile(filepath.Join(rootDir, "run/holo.pid"))
 			if pidFile == nil {
-				exit(255)
+				return 255
 			}
-			CommandApply(e, options[optionApplyForce])
-			pidFile.Release()
+			defer pidFile.Release()
+			return CommandApply(e, options[optionApplyForce])
 		}
 	case "diff":
 		command = CommandDiff
@@ -148,42 +141,43 @@ func Main(rootDir, version string, getPlugin PluginGetter) {
 			"-s": optionScanShort, "--short": optionScanShort,
 			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
 		}
-		command = func(e []*EntityHandle) {
-			CommandScan(e, options[optionScanPorcelain], options[optionScanShort])
+		command = func(e []*EntityHandle) int {
+			return CommandScan(e, options[optionScanPorcelain], options[optionScanShort])
 		}
 	case "version", "--version":
 		fmt.Println(version)
-		exit(0)
+		return 0
 	case "help", "--help":
 		help(os.Stdout)
-		exit(0)
+		return 0
 	default:
 		help(os.Stderr)
-		exit(2)
+		return 2
 	}
 
 	// load configuration
 	configReader, err := NewConfigReader(rootDir)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
-		exit(255)
+		return 255
 	}
 	config, err := ReadConfig(configReader)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
-		exit(255)
+		return 255
 	}
 
 	// load plugins
 	runtimeManager, err = NewRuntimeManager(rootDir)
 	if err != nil {
-		exit(255)
+		return 255
 	}
+	defer runtimeManager.Close()
 	plugins := runtimeManager.GetPlugins(config.Plugins, getPlugin)
 	if plugins == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
-		exit(255)
+		return 255
 	}
 
 	// parse command line -- classify each argument as either a
@@ -203,7 +197,7 @@ func Main(rootDir, version string, getPlugin PluginGetter) {
 	entities, err := GetAllEntities(plugins)
 	if err != nil {
 		output.Errorf(output.Stderr, "%s", err.Error())
-		exit(255)
+		return 255
 	}
 	if len(selectors) > 0 {
 		entities = FilterEntities(entities, selectors)
@@ -218,11 +212,9 @@ func Main(rootDir, version string, getPlugin PluginGetter) {
 		}
 	}
 	if hasUnrecognizedArgs {
-		exit(255)
+		return 255
 	}
 
-	//execute command
-	command(entities)
-
-	exit(0)
+	// execute command
+	return command(entities)
 }

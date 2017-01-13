@@ -30,7 +30,7 @@ import (
 	"holocm.org/plugins/externalplugin"
 )
 
-func main() {
+func Main() int {
 	rootDir := os.Getenv("HOLO_ROOT_DIR")
 	if rootDir == "" {
 		rootDir = "/"
@@ -48,5 +48,9 @@ func main() {
 		return plugin, nil
 	}
 
-	impl.Main(rootDir, version, getPlugin)
+	return impl.Main(rootDir, version, getPlugin)
+}
+
+func main() {
+	os.Exit(Main())
 }

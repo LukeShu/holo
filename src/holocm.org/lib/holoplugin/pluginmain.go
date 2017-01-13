@@ -30,7 +30,7 @@ import (
 	"holocm.org/lib/holo"
 )
 
-func Main(getplugin func(holo.Runtime) holo.Plugin) {
+func Main(getplugin func(holo.Runtime) holo.Plugin) int {
 	runtime := holo.Runtime{
 		RootDirPath: os.Getenv("HOLO_ROOT_DIR"),
 
@@ -46,11 +46,11 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 		runtime.APIVersion, err = strconv.Atoi(verstr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not parse HOLO_API_VERSION: %v", err)
-			os.Exit(1)
+			return 1
 		}
 		if runtime.APIVersion < 1 {
 			fmt.Fprintf(os.Stderr, "HOLO_API_VERSION must be positive: %d", runtime.APIVersion)
-			os.Exit(1)
+			return 1
 		}
 	}
 
@@ -65,7 +65,7 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 		entities, err := plugin.HoloScan(os.Stderr)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v", err)
-			os.Exit(1)
+			return 1
 		}
 		for _, entity := range entities {
 			fmt.Printf("ENTITY: %s\n", entity.EntityID())
@@ -88,17 +88,17 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 		if msg, ok := result.(holo.ApplyMessage); ok {
 			msg.Send()
 		}
-		os.Exit(result.ExitCode())
+		return result.ExitCode()
 	case "force-apply":
 		result := plugin.HoloApply(os.Args[2], true, os.Stdout, os.Stderr)
 		if msg, ok := result.(holo.ApplyMessage); ok {
 			msg.Send()
 		}
-		os.Exit(result.ExitCode())
+		return result.ExitCode()
 	case "diff":
 		new, cur := plugin.HoloDiff(os.Args[2], os.Stderr)
 		if new == "" && cur == "" {
-			os.Exit(0)
+			return 0
 		}
 		if new == "" {
 			new = "/dev/null"
@@ -112,5 +112,5 @@ func Main(getplugin func(holo.Runtime) holo.Plugin) {
 			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
 		}
 	}
-	os.Exit(0)
+	return 0
 }

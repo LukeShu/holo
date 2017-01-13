@@ -27,7 +27,7 @@ import (
 	"holocm.org/cmd/holo/output"
 )
 
-func CommandApply(entities []*EntityHandle, withForce bool) {
+func CommandApply(entities []*EntityHandle, withForce bool) int {
 	for _, entity := range entities {
 		entity.Apply(withForce)
 
@@ -35,9 +35,10 @@ func CommandApply(entities []*EntityHandle, withForce bool) {
 		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
+	return 0
 }
 
-func CommandScan(entities []*EntityHandle, isPorcelain, isShort bool) {
+func CommandScan(entities []*EntityHandle, isPorcelain, isShort bool) int {
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
@@ -48,9 +49,10 @@ func CommandScan(entities []*EntityHandle, isPorcelain, isShort bool) {
 			entity.PrintReport(false)
 		}
 	}
+	return 0
 }
 
-func CommandDiff(entities []*EntityHandle) {
+func CommandDiff(entities []*EntityHandle) int {
 	for _, entity := range entities {
 		dat, err := entity.RenderDiff()
 		if err != nil {
@@ -62,4 +64,5 @@ func CommandDiff(entities []*EntityHandle) {
 		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
+	return 0
 }

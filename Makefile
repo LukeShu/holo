@@ -1,8 +1,9 @@
-bins = holo holo-files
+bins = holo holo-files tinyholo
 mans = holorc.5 holo-plugin-interface.7 holo-test.7 holo.8 holo-files.8
 
-GO_BUILDFLAGS :=
-GO_LDFLAGS    := -s -w
+GO_BUILDFLAGS =
+GO_LDFLAGS    = -s -w
+GO_TESTFLAGS  = -covermode=count
 
 all: $(addprefix bin/,$(bins))
 all: $(addprefix man/,$(mans))
@@ -11,8 +12,10 @@ all: $(addprefix man/,$(mans))
 src/holocm.org/cmd/holo/version.go: FORCE
 	printf 'package main\n\nconst version = "%s"\n' "$$( ./util/find_version.sh)" | util/write-ifchanged $@
 
-%/holo %/holo-files %/tinyholo: FORCE src/holocm.org/cmd/holo/version.go
-	GOPATH=$(dir $(abspath $*)) go install $(GO_BUILDFLAGS) --ldflags '$(GO_LDFLAGS)' holocm.org/cmd/holo holocm.org/cmd/holo-files holocm.org/cmd/tinyholo
+$(addprefix %/,$(bins)): FORCE src/holocm.org/cmd/holo/version.go
+	GOPATH=$(abspath .) go install $(GO_BUILDFLAGS) --ldflags '$(GO_LDFLAGS)' $(addprefix holocm.org/cmd/,$(bins))
+bin/%.test: bin/% src/holocm.org/cmd/main.go.test
+	GOPATH=$(abspath .) go test -c -o $@ $(GO_TESTFLAGS) -coverpkg ./... holocm.org/cmd/$*
 
 man:
 	mkdir $@
@@ -25,7 +28,7 @@ man/%: doc/%.pod | man
 		$< $@
 test: check # just a synonym
 check: all util/holo-test
-	GOPATH=$(abspath .) go test holocm.org/cmd/holo/output
+	GOPATH=$(abspath .) go test $(GO_TESTFLAGS) holocm.org/cmd/holo/output
 	HOLO_BINARY=../../bin/holo bash util/holo-test holo $(sort $(wildcard test/??-*))
 .PHONY: test check
 

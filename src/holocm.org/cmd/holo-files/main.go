@@ -22,10 +22,16 @@
 package main
 
 import (
+	"os"
+
 	"holocm.org/lib/holoplugin"
 	"holocm.org/plugins/filesplugin"
 )
 
+func Main() int {
+	return holoplugin.Main(filesplugin.NewFilesPlugin)
+}
+
 func main() {
-	holoplugin.Main(filesplugin.NewFilesPlugin)
+	os.Exit(Main())
 }
