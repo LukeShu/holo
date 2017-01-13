@@ -27,9 +27,10 @@ man/%: doc/%.pod | man
 		--center="Configuration Management" --release="Holo $(VERSION)" \
 		$< $@
 test: check # just a synonym
-check: all util/holo-test
+check: all util/holo-test $(foreach b,$(bins),bin/$b.test)
 	GOPATH=$(abspath .) go test $(GO_TESTFLAGS) holocm.org/cmd/holo/output
-	HOLO_BINARY=../../bin/holo bash util/holo-test holo $(sort $(wildcard test/??-*))
+	rm -f -- test/cov/*
+	HOLO_BINARY=../../bin/holo.test HOLO_TEST_COVERDIR=$(abspath test/cov) util/holo-test holo $(sort $(wildcard test/??-*))
 .PHONY: test check
 
 install-holo: all conf/holorc src/holo-test util/autocomplete.bash util/autocomplete.zsh
