@@ -15,7 +15,7 @@ src/holocm.org/cmd/holo/version.go: FORCE
 $(addprefix %/,$(bins)): FORCE src/holocm.org/cmd/holo/version.go
 	GOPATH=$(abspath .) go install $(GO_BUILDFLAGS) --ldflags '$(GO_LDFLAGS)' $(addprefix holocm.org/cmd/,$(bins))
 bin/%.test: bin/% src/holocm.org/cmd/main.go.test
-	GOPATH=$(abspath .) go test -c -o $@ $(GO_TESTFLAGS) -coverpkg ./... holocm.org/cmd/$*
+	GOPATH=$(abspath .) go test -c -o $@ $(GO_TESTFLAGS) -coverpkg holocm.org/... holocm.org/cmd/$*
 
 man:
 	mkdir $@
@@ -27,14 +27,18 @@ man/%: doc/%.pod | man
 		--center="Configuration Management" --release="Holo $(VERSION)" \
 		$< $@
 test: check # just a synonym
-check: all util/holo-test util/gocovcat.go $(foreach b,$(bins),bin/$b.test)
-	GOPATH=$(abspath .) go test $(GO_TESTFLAGS) holocm.org/cmd/holo/output
-	rm -f -- test/cov/*
-	HOLO_BINARY=../../bin/holo.test HOLO_TEST_COVERDIR=$(abspath test/cov) util/holo-test holo $(sort $(wildcard test/??-*))
-	util/gocovcat.go test/cov/*.cov > test/cov.cov
+check: test/cov.html test/cov.func.txt
 .PHONY: test check
+test/cov.cov: FORCE util/holo-test util/gocovcat.go $(foreach b,$(bins),bin/$b.test)
+	rm -f -- test/cov/* test/cov.*
+	GOPATH=$(abspath .) go test $(GO_TESTFLAGS) -coverprofile=test/cov/holo-output.cov holocm.org/cmd/holo/output
+	HOLO_BINARY=../../bin/holo.test     HOLO_TEST_COVERDIR=$(abspath test/cov) util/holo-test holo $(sort $(wildcard test/??-*))
+	HOLO_BINARY=../../bin/tinyholo.test HOLO_TEST_COVERDIR=$(abspath test/cov) util/holo-test holo $(sort $(wildcard test/??-*))
+	util/gocovcat.go test/cov/*.cov > test/cov.cov
 %.html: %.cov
 	GOPATH=$(abspath .) go tool cover -html $< -o $@
+%.func.txt: %.cov
+	GOPATH=$(abspath .) go tool cover -func $< -o $@
 
 install-holo: all conf/holorc src/holo-test util/autocomplete.bash util/autocomplete.zsh
 	install -d -m 0755 "$(DESTDIR)/usr/share/holo"

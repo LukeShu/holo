@@ -1,11 +1,12 @@
 //usr/bin/env go run "$0" "$@"; exit $?
 
+// Command gocovcat combines multiple go cover runs, and prints the
+// result on stdout.
 package main
 
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"sort"
 	"strconv"
@@ -20,27 +21,24 @@ func handleErr(err error) {
 }
 
 func main() {
-	var mode string
+	modeBool := false
 	blocks := map[string]int{}
 	for _, filename := range os.Args[1:] {
 		file, err := os.Open(filename)
 		handleErr(err)
-		buf := bufio.NewReader(file)
-		err = nil
-		for err != io.EOF {
-			var line string
-			line, err = buf.ReadString('\n')
-			if err == io.EOF {
-				continue
-			}
-			handleErr(err)
-			line = strings.TrimSuffix(line, "\n")
+		buf := bufio.NewScanner(file)
+		for buf.Scan() {
+			line := buf.Text()
 
-			if strings.HasPrefix(line, "mode:") {
-				if mode == "" {
-					mode = line
-				} else if mode != line {
-					fmt.Fprintf(os.Stderr, "mixed modes: %q != %q\n", mode, line)
+			if strings.HasPrefix(line, "mode: ") {
+				m := strings.TrimPrefix(line, "mode: ")
+				switch m {
+				case "set":
+					modeBool = true
+				case "count", "atomic":
+					// do nothing
+				default:
+					fmt.Fprintf(os.Stderr, "Unrecognized mode: %s\n", m)
 					os.Exit(1)
 				}
 			} else {
@@ -52,14 +50,23 @@ func main() {
 				blocks[block] += cnt
 			}
 		}
+		handleErr(buf.Err())
 	}
 	keys := make([]string, 0, len(blocks))
 	for key := range blocks {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	fmt.Println(mode)
+	modeStr := "count"
+	if modeBool {
+		modeStr = "set"
+	}
+	fmt.Printf("mode: %s\n", modeStr)
 	for _, block := range keys {
-		fmt.Printf("%s %d\n", block, blocks[block])
+		cnt := blocks[block]
+		if modeBool && cnt > 1 {
+			cnt = 1
+		}
+		fmt.Printf("%s %d\n", block, cnt)
 	}
 }
