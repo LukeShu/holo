@@ -183,10 +183,9 @@ func Main(rootDir, version string, getPlugin PluginGetter) (exitCode int) {
 	if true {
 		// parse command line -- classify each argument as either a
 		// selector-string or an option-flag.
-		args := os.Args[2:]
 		options := make(map[int]bool)
 		selectors := make(map[string]bool)
-		for _, arg := range args {
+		for _, arg := range os.Args[2:] {
 			// either it's a known option for this subcommand...
 			if value, ok := knownOpts[arg]; ok {
 				options[value] = true
