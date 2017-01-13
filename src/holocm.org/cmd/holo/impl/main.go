@@ -108,8 +108,8 @@ func Main(rootDir, version string, getPlugin PluginGetter) int {
 		fmt.Fprintf(w, "    %s apply [-f|--force] [selector ...]\n", program)
 		fmt.Fprintf(w, "    %s diff [selector ...]\n", program)
 		fmt.Fprintf(w, "    %s scan [-s|--short|-p|--porcelain] [selector ...]\n", program)
-		fmt.Fprintf(w, "    %s --help\n", program)
-		fmt.Fprintf(w, "    %s --version\n", program)
+		fmt.Fprintf(w, "    %s help\n", program)
+		fmt.Fprintf(w, "    %s version\n", program)
 		fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
 	}
 
@@ -182,9 +182,8 @@ func Main(rootDir, version string, getPlugin PluginGetter) int {
 
 	// parse command line -- classify each argument as either a
 	// selector-string or an option-flag.
-	args := os.Args[2:]
 	selectors := make(map[string]bool)
-	for _, arg := range args {
+	for _, arg := range os.Args[2:] {
 		// either it's a known option for this subcommand...
 		if value, ok := knownOpts[arg]; ok {
 			options[value] = true
