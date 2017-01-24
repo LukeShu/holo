@@ -31,6 +31,7 @@ check: test/cov.html test/cov.func.txt
 .PHONY: test check
 test/cov.cov: FORCE util/holo-test util/gocovcat.go $(foreach b,$(bins),bin/$b.test)
 	rm -f -- test/cov/* test/cov.*
+	test -z "$$(gofmt -d src)"
 	GOPATH=$(abspath .) go test $(GO_TESTFLAGS) -coverprofile=test/cov/holo-output.cov holocm.org/cmd/holo/output
 	HOLO_BINARY=../../bin/holo.test     HOLO_TEST_COVERDIR=$(abspath test/cov) util/holo-test holo $(sort $(wildcard test/??-*))
 	HOLO_BINARY=../../bin/tinyholo.test HOLO_TEST_COVERDIR=$(abspath test/cov) util/holo-test holo $(sort $(wildcard test/??-*))
