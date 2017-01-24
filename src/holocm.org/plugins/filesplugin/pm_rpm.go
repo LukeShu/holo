@@ -35,11 +35,11 @@ func (p pmRPM) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPat
 	//updated target base to "${target}.rpmnew" so that the usual application
 	//logic can continue
 	if fileutil.IsManageableFile(rpmsavePath) {
-		err := fileutil.MoveFile(targetPath, rpmnewPath)
+		err := fileutil.MoveFile(targetPath, rpmnewPath) // TODO(lukeshu): os.Rename()?
 		if err != nil {
 			return "", "", err
 		}
-		err = fileutil.MoveFile(rpmsavePath, targetPath)
+		err = fileutil.MoveFile(rpmsavePath, targetPath) // TODO(lukeshu): os.Rename()?
 		if err != nil {
 			return "", "", err
 		}

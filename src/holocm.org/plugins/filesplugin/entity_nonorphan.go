@@ -55,7 +55,7 @@ func (target *FilesEntity) apply(haveForce bool, stdout, stderr io.Writer) (holo
 		// updatedTBPath (but show it to the user as
 		// reportedTBPath).
 		fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
-		err := fileutil.MoveFile(updatedTBPath, targetBasePath)
+		err := fileutil.MoveFile(updatedTBPath, targetBasePath) // TODO(lukeshu): os.Rename()?
 		if err != nil {
 			return nil, fmt.Errorf("Cannot move %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
 		}
