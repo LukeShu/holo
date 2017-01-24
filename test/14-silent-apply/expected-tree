@@ -1,0 +1,16 @@
+>> ./etc/holorc = symlink
+../../../holorc
+>> ./etc/normal.conf = regular
+ccc
+ccc
+>> ./run = dir
+>> ./tmp = dir
+>> ./usr/share/holo/files/01-first/etc/normal.conf = regular
+ccc
+ccc
+>> ./var/lib/holo/files/base/etc/normal.conf = regular
+aaa
+aaa
+>> ./var/lib/holo/files/provisioned/etc/normal.conf = regular
+ccc
+ccc

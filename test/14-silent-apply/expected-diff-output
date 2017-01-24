@@ -1,0 +1,9 @@
+diff --holo target/var/lib/holo/files/provisioned/etc/normal.conf target/etc/normal.conf
+--- target/var/lib/holo/files/provisioned/etc/normal.conf
++++ target/etc/normal.conf
+@@ -1,2 +1,2 @@
+-bbb
+-bbb
++ccc
++ccc
+exit status 0
