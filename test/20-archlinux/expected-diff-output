@@ -1,3 +1,10 @@
+diff --holo target/var/lib/holo/files/provisioned/etc/targetfile-deleted-with-modified-pacsave.conf target/etc/targetfile-deleted-with-modified-pacsave.conf
+deleted file mode 100644
+--- target/var/lib/holo/files/provisioned/etc/targetfile-deleted-with-modified-pacsave.conf
++++ /dev/null
+@@ -1,2 +0,0 @@
+-ddd
+-ddd
 diff --holo target/var/lib/holo/files/provisioned/etc/targetfile-deleted-with-pacsave.conf target/etc/targetfile-deleted-with-pacsave.conf
 deleted file mode 100644
 --- target/var/lib/holo/files/provisioned/etc/targetfile-deleted-with-pacsave.conf
