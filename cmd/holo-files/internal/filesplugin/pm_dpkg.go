@@ -36,11 +36,11 @@ func (p pmDPKG) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPa
 	//updated target base to "${target}.dpkg-dist" so that the usual application
 	//logic can continue
 	if fileutil.IsManageableFile(dpkgOldPath) {
-		err := fileutil.MoveFile(targetPath, dpkgDistPath)
+		err := fileutil.MoveFile(targetPath, dpkgDistPath) // TODO(lukeshu): os.Rename()?
 		if err != nil {
 			return "", "", err
 		}
-		err = fileutil.MoveFile(dpkgOldPath, targetPath)
+		err = fileutil.MoveFile(dpkgOldPath, targetPath) // TODO(lukeshu): os.Rename()?
 		if err != nil {
 			return "", "", err
 		}
