@@ -21,7 +21,6 @@
 package impl
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -34,10 +33,17 @@ import (
 //This includes taking a copy of the target base if necessary, applying all
 //repository entries, and saving the result in the target path with the correct
 //file metadata.
-func (target *TargetFile) applyNonOrphan(haveForce bool) (skipReport bool, err error) {
-	//determine the related paths
+func (target *TargetFile) apply(haveForce bool) (skipReport bool, errs []error) {
+	// determine the related paths
 	targetPath := target.PathIn(common.TargetDirectory())
 	targetBasePath := target.PathIn(common.TargetBaseDirectory())
+	lastProvisionedPath := target.PathIn(common.ProvisionedDirectory())
+
+	appendError := func(err error) {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
 
 	// step 1: Check if a system update installed a new version of
 	// the stock configuration
@@ -47,116 +53,157 @@ func (target *TargetFile) applyNonOrphan(haveForce bool) (skipReport bool, err e
 	// stat()ing the wrong file.
 	updatedTBPath, reportedTBPath, err := platform.Implementation().FindUpdatedTargetBase(targetPath)
 	if err != nil {
-		return false, err
+		return false, []error{err}
 	}
 	if updatedTBPath != "" {
 		//an updated stock configuration is available at updatedTBPath
-		fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
+		fmt.Printf(">> found updated target base: %s -> %s\n", reportedTBPath, targetBasePath)
 		err := common.CopyFile(updatedTBPath, targetBasePath)
 		if err != nil {
-			return false, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
+			return false, []error{fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())}
 		}
 		_ = os.Remove(updatedTBPath) //this can fail silently
 	}
 
-	// step 2: Load the current version into memory.
-	needForcefulReprovision := false
+	// step 2: Load the 3 versions into memory.
 	targetBuffer, err := common.NewFileBuffer(targetPath)
-	if os.IsNotExist(err) {
-		targetBuffer, err = common.NewFileBuffer(targetBasePath)
-		targetBuffer.Path = targetPath
-		if err != nil {
-			return false, errors.New("skipping target: not a manageable file")
+	if !os.IsNotExist(err) {
+		if pe, ok := err.(*os.PathError); ok {
+			pe.Op = "skipping"
+			pe.Path = "target"
 		}
-		if !haveForce {
-			return false, ErrNeedForceToRestore
-		}
-		needForcefulReprovision = true
-	}
-	if err != nil {
-		return false, errors.New("skipping target: not a manageable file")
+		appendError(err)
 	}
 
-	// step 3: Load the base version into memory.
 	baseBuffer, err := common.NewFileBuffer(targetBasePath)
-	baseBuffer.Path = targetPath
-	if os.IsNotExist(err) {
+	if !os.IsNotExist(err) {
+		if pe, ok := err.(*os.PathError); ok {
+			pe.Op = "skipping"
+			pe.Path = "target"
+		}
+		appendError(err)
+	}
+
+	lastProvisionedBuffer, err := common.NewFileBuffer(lastProvisionedPath)
+	if !os.IsNotExist(err) {
+		if pe, ok := err.(*os.PathError); ok {
+			pe.Op = "skipping"
+			pe.Path = "target"
+		}
+		appendError(err)
+	}
+
+	if len(errs) > 0 {
+		return false, errs
+	}
+
+	var strategy func(base, provisioned, target common.FileBuffer, haveForce bool) (skipReport bool, errs []error)
+	if len(target.repoEntries) == 0 {
+		if targetBuffer.Manageable {
+			strategy = target.applyRestore
+		} else {
+			strategy = target.applyDelete
+		}
+	} else {
+		strategy = target.applyProvision
+	}
+	//TODO: cleanup empty directories below TargetBaseDirectory() and ProvisionedDirectory()
+	return strategy(baseBuffer, lastProvisionedBuffer, targetBuffer, haveForce)
+}
+
+func (tf *TargetFile) applyProvision(base, provisioned, target common.FileBuffer, haveForce bool) (skipReport bool, errs []error) {
+	var err error
+	appendError := func(err error) {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	// step 1: figure out if we need to shuffle files around
+	if target.Manageable && !base.Manageable {
 		// if we don't have a target base yet, the file at
 		// targetPath *is* the targetBase; which we have to
 		// copy now
-		targetBaseDir := filepath.Dir(targetBasePath)
+		targetBaseDir := filepath.Dir(base.Path)
 		err = os.MkdirAll(targetBaseDir, 0755)
 		if err != nil {
-			return false, fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error())
+			appendError(fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error()))
+			return
 		}
 
-		err = targetBuffer.Write(targetBasePath)
+		err = target.Write(base.Path)
 		if err != nil {
-			return false, fmt.Errorf("Cannot copy %s to %s: %s", targetPath, targetBasePath, err.Error())
+			appendError(fmt.Errorf("Cannot copy %s to %s: %s", target.Path, base.Path, err.Error()))
+			return
 		}
-		baseBuffer = targetBuffer
+		tmp := target
+		tmp.Path = base.Path
+		base = tmp
 	}
+
+	// step 2: apply the repo files (in memory)
+
+	if !base.Manageable {
+		appendError(&os.PathError{
+			Op:   "skipping",
+			Path: "target",
+			Err:  common.ErrNotManageable,
+		})
+		return
+	}
+
+	buffer, err := tf.Render(base)
 	if err != nil {
-		return false, err
+		appendError(err)
+		return
 	}
 
-	// step 4: apply the repo files (in memory)
-
-	buffer, err := target.Render(baseBuffer)
-	if err != nil {
-		return false, err
-	}
-
-	// step 5: Load the last-provisioned version into memory.
-	lastProvisionedPath := target.PathIn(common.ProvisionedDirectory())
-	lastProvisionedBuffer, err := common.NewFileBuffer(lastProvisionedPath)
-	lastProvisionedBuffer.Path = targetPath
-	haveLastProvisionedBuffer := !os.IsNotExist(err)
-	if err != nil && !os.IsNotExist(err) {
-		return false, err
-	}
-
-	// step 6: save to the filesystem
+	// step 3: save to the filesystem
 	//
-	// we have 2 files to hit:
+	// We need to save `buffer` to 2 different files:
 	//  - the last-provisioned file
 	//  - the actual file
 
-	// last-provisioned file
-	if buffer != lastProvisionedBuffer || !haveLastProvisionedBuffer {
-		provisionedDir := filepath.Dir(lastProvisionedPath)
-		err = os.MkdirAll(provisionedDir, 0755)
-		if err != nil {
-			return false, fmt.Errorf("Cannot write %s: %s", lastProvisionedPath, err.Error())
-		}
-		err = buffer.Write(lastProvisionedPath)
-		if err != nil {
-			return false, err
-		}
-	}
-
 	// actual file
-	if buffer != targetBuffer || needForcefulReprovision {
-		if haveLastProvisionedBuffer && targetBuffer != lastProvisionedBuffer {
-			if !haveForce {
-				return false, ErrNeedForceToOverwrite
+	if !target.Manageable || !buffer.Equal(target) {
+		if !haveForce {
+			if !target.Manageable {
+				appendError(ErrNeedForceToRestore)
+				return
+			}
+			if provisioned.Manageable && !buffer.Equal(provisioned) {
+				appendError(ErrNeedForceToOverwrite)
+				return
 			}
 		}
-		// Do the $target.holonew -> $target shuffle so that
+		// Do a $target.holonew -> $target shuffle so that
 		// $target is updated atomically (to ensure that there
 		// is always a valid file at $target)
-		err = buffer.Write(targetPath + ".holonew")
+		err = buffer.Write(target.Path + ".holonew")
 		if err != nil {
-			return false, err
+			appendError(err)
+			return
 		}
-		err = os.Rename(targetPath+".holonew", targetPath)
+		err = os.Rename(target.Path+".holonew", target.Path)
 		if err != nil {
-			return false, err
+			appendError(err)
+			return
 		}
-		return false, nil
 	} else {
-		return true, nil
+		skipReport = true
 	}
+
+	// last-provisioned file
+	if !provisioned.Manageable || !buffer.Equal(provisioned) {
+		provisionedDir := filepath.Dir(provisioned.Path)
+		err = os.MkdirAll(provisionedDir, 0755)
+		if err == nil {
+			err = buffer.Write(provisioned.Path)
+		}
+		appendError(err)
+	}
+
+	return
 }
 
 //Render applies all the repo files for this TargetFile onto the target base.

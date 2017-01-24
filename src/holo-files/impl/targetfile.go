@@ -33,7 +33,6 @@ import (
 //TargetFile represents a configuration file that can be provisioned by Holo.
 type TargetFile struct {
 	relTargetPath string //the target path relative to the common.TargetDirectory()
-	orphaned      bool   //default: false
 	repoEntries   RepoFiles
 }
 
@@ -80,8 +79,13 @@ func (target *TargetFile) EntityID() string {
 func (target *TargetFile) PrintReport() {
 	fmt.Printf("ENTITY: %s\n", target.EntityID())
 
-	if target.orphaned {
-		_, strategy, assessment := target.scanOrphanedTargetBase()
+	if len(target.repoEntries) == 0 {
+		var strategy, assessment string
+		if common.IsManageableFile(target.PathIn(common.TargetDirectory())) {
+			strategy, assessment = "restore", "all repository files were deleted"
+		} else {
+			strategy, assessment = "delete", "target was deleted"
+		}
 		fmt.Printf("ACTION: Scrubbing (%s)\n", assessment)
 		fmt.Printf("%s: %s\n", strategy, target.PathIn(common.TargetBaseDirectory()))
 	} else {
@@ -103,27 +107,14 @@ var ErrNeedForceToRestore = errors.New("NeedForceToRestore")
 
 //Apply implements the common.Entity interface.
 func (target *TargetFile) Apply(withForce bool) (skipReport, needForceToOverwrite, needForceToRestore bool) {
-	if target.orphaned {
-		errs := target.applyOrphan()
-		skipReport = false
-		needForceToOverwrite = false
-		needForceToRestore = false
-
-		for _, err := range errs {
-			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
-		}
-	} else {
-		var err error
-		skipReport, err = target.applyNonOrphan(withForce)
-
-		//special cases for errors that signal command messages
-		needForceToOverwrite = err == ErrNeedForceToOverwrite
-		needForceToRestore = err == ErrNeedForceToRestore
-		if needForceToRestore || needForceToOverwrite {
-			err = nil
-		}
-
-		if err != nil {
+	skipReport, errs := target.apply(withForce)
+	for _, err := range errs {
+		switch err {
+		case ErrNeedForceToOverwrite:
+			needForceToOverwrite = true
+		case ErrNeedForceToRestore:
+			needForceToRestore = true
+		default:
 			fmt.Fprintf(os.Stderr, "!! %s\n", err.Error())
 		}
 	}

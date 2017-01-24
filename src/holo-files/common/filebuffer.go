@@ -29,6 +29,11 @@ import (
 	"syscall"
 )
 
+var (
+	ErrNotManageable = errors.New("not a manageable file")
+	ErrExist         = errors.New("target exists and is not a manageable file")
+)
+
 //FileBuffer represents a file, loaded into memory. It is used in holo.Apply() as
 //an intermediary product of application steps.
 type FileBuffer struct {
@@ -37,6 +42,8 @@ type FileBuffer struct {
 	Uid      int
 	Gid      int
 	Contents string
+
+	Manageable bool
 }
 
 //NewFileBuffer creates a FileBuffer object by reading the manageable file at
@@ -45,8 +52,9 @@ func NewFileBuffer(path string) (FileBuffer, error) {
 	return newFileBuffer(path, false)
 }
 
-func newFileBuffer(path string, follow bool) (FileBuffer, error) {
-	var err error
+func newFileBuffer(path string, follow bool) (fb FileBuffer, err error) {
+	fb.Path = path
+
 	var info os.FileInfo
 	if follow {
 		info, err = os.Stat(path)
@@ -54,37 +62,39 @@ func newFileBuffer(path string, follow bool) (FileBuffer, error) {
 		info, err = os.Lstat(path)
 	}
 	if err != nil {
-		return FileBuffer{}, err
+		return
 	}
 
 	stat := info.Sys().(*syscall.Stat_t) // UGLY
-	fb := FileBuffer{
-		Path: path,
-		Mode: info.Mode(),
-		Uid:  int(stat.Uid),
-		Gid:  int(stat.Gid),
-	}
+
+	fb.Mode = info.Mode()
+	fb.Uid = int(stat.Uid)
+	fb.Gid = int(stat.Gid)
 
 	if fb.Mode&os.ModeSymlink != 0 {
 		fb.Contents, err = os.Readlink(path)
 		if err != nil {
-			return FileBuffer{}, err
+			return
 		}
+		fb.Manageable = true
 	} else if fb.Mode.IsRegular() {
-		contents, err := ioutil.ReadFile(path)
+		var contents []byte
+		contents, err = ioutil.ReadFile(path)
 		if err != nil {
-			return FileBuffer{}, err
+			return
 		}
 		fb.Contents = string(contents)
+		fb.Manageable = true
 	} else {
-		return FileBuffer{}, &os.PathError{
+		err = &os.PathError{
 			Op:   "holo.NewFileBuffer",
 			Path: path,
-			Err:  errors.New("not a manageable file"),
+			Err:  ErrNotManageable,
 		}
+		return
 	}
 
-	return fb, nil
+	return
 }
 
 func (fb *FileBuffer) Write(path string) error {
@@ -99,7 +109,7 @@ func (fb *FileBuffer) Write(path string) error {
 			return &os.PathError{
 				Op:   "holo.FileBuffer.Write",
 				Path: path,
-				Err:  errors.New("target exists and is not a manageable file"),
+				Err:  ErrExist,
 			}
 		}
 	}
@@ -145,4 +155,9 @@ func (fb FileBuffer) ResolveSymlink() (FileBuffer, error) {
 	}
 
 	return newFileBuffer(target, true)
+}
+
+func (a FileBuffer) Equal(b FileBuffer) bool {
+	b.Path = a.Path
+	return a == b
 }

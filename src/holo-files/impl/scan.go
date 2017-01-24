@@ -86,7 +86,6 @@ func ScanRepo() []*TargetFile {
 		target := NewTargetFileFromPathIn(targetBaseDir, targetBasePath)
 		targetPath := target.PathIn(common.TargetDirectory())
 		if targets[targetPath] == nil {
-			target.orphaned = true
 			targets[targetPath] = target
 		}
 		return nil
