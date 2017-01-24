@@ -24,42 +24,51 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"strings"
 
 	"holocm.org/plugins/filesplugin/fileutil"
 )
 
-func (repoFile RepoFile) ApplyTo(in *fileutil.FileBuffer, stdout, stderr io.Writer) (out *fileutil.FileBuffer, err error) {
-	if repoFile.ApplicationStrategy() == "passthru" {
+func (repoFile RepoFile) ApplyTo(buf fileutil.FileBuffer, stdout, stderr io.Writer) (out fileutil.FileBuffer, err error) {
+	if strings.HasSuffix(repoFile.Path, ".holoscript") {
 		// script //////////////////////////////////////////////
 
 		// this application strategy requires file contents
-		in, err = in.ResolveSymlink()
+		buf, err = buf.ResolveSymlink()
 		if err != nil {
-			return nil, err
+			return fileutil.FileBuffer{}, err
 		}
 
 		// run command, fetch result file into out (not into
 		// the targetPath directly, in order not to corrupt
 		// the file there if the script run fails)
 		var stdout bytes.Buffer
-		cmd := exec.Command(repoFile.Path())
-		cmd.Stdin = bytes.NewBuffer(in.Contents)
+		cmd := exec.Command(repoFile.Path)
+		cmd.Stdin = strings.NewReader(buf.Contents)
 		cmd.Stdout = &stdout
 		cmd.Stderr = stderr
 		err = cmd.Run()
 		if err != nil {
-			return nil, fmt.Errorf("execution of %s failed: %s", repoFile.Path(), err.Error())
+			return fileutil.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", repoFile.Path, err.Error())
 		}
 
 		// result is the stdout of the script
-		return fileutil.NewFileBufferFromContents(stdout.Bytes(), in.BasePath), nil
+		buf.Mode &^= os.ModeType
+		buf.Contents = stdout.String()
+		return buf, nil
 	} else {
 		// file ////////////////////////////////////////////////
 
-		// if the repo contains a plain file (or symlink), the file
-		// buffer is replaced by it, thus ignoring the target base (or
-		// any previous application steps)
-		return fileutil.NewFileBuffer(repoFile.Path(), in.BasePath)
+		// Replace the FileBuffer's filetype and contents with
+		// that of the repofile.
+		repobuf, err := fileutil.NewFileBuffer(repoFile.Path, false)
+		if err != nil {
+			return fileutil.FileBuffer{}, err
+		}
+		buf.Mode = (buf.Mode &^ os.ModeType) | (repobuf.Mode & os.ModeType)
+		buf.Contents = repobuf.Contents
+		return buf, nil
 	}
 }

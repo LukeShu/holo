@@ -21,149 +21,137 @@
 package fileutil
 
 import (
-	"bytes"
 	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
-// FileBuffer represents the contents of a file. It is used in
+// FileBuffer represents the contents of a file.  It is used in
 // HoloApply() as an intermediary product of application steps.
 type FileBuffer struct {
-	//set only for regular files
-	Contents []byte
-	//set only for symlinks
-	SymlinkTarget string
-	//used by ResolveSymlink (see doc over there)
-	BasePath string
+	Path     string
+	Mode     os.FileMode
+	Uid      int
+	Gid      int
+	Contents string
 }
 
 // NewFileBuffer creates a FileBuffer object by reading the manageable
-// file at the given path. The basePath is stored in the FileBuffer
-// for use in FileBuffer.ResolveSymlink().
-func NewFileBuffer(path string, basePath string) (*FileBuffer, error) {
-	info, err := os.Lstat(path)
+// file at the given path.  The `follow` argument specifies whether to
+// follow symlinks.
+func NewFileBuffer(path string, follow bool) (FileBuffer, error) {
+	var err error
+
+	var info os.FileInfo
+	if follow {
+		info, err = os.Stat(path)
+	} else {
+		info, err = os.Lstat(path)
+	}
 	if err != nil {
-		return nil, err
+		return FileBuffer{}, err
+	}
+	stat := info.Sys().(*syscall.Stat_t) // FIXME(majewsky): ugly
+
+	buf := FileBuffer{
+		Path: path,
+		Mode: info.Mode(),
+		Uid:  int(stat.Uid),
+		Gid:  int(stat.Gid),
 	}
 
-	//a manageable file is either a symlink...
-	if info.Mode()&os.ModeSymlink != 0 {
-		target, err := os.Readlink(path)
+	if buf.Mode&os.ModeSymlink != 0 {
+		buf.Contents, err = os.Readlink(path)
 		if err != nil {
-			return nil, err
+			return FileBuffer{}, err
 		}
-		return &FileBuffer{
-			Contents:      nil,
-			SymlinkTarget: target,
-			BasePath:      basePath,
-		}, nil
-	}
-
-	//...or a regular file
-	if info.Mode().IsRegular() {
+	} else if buf.Mode.IsRegular() {
 		contents, err := ioutil.ReadFile(path)
 		if err != nil {
-			return nil, err
+			return FileBuffer{}, err
 		}
-		return &FileBuffer{
-			Contents:      contents,
-			SymlinkTarget: "",
-			BasePath:      basePath,
-		}, nil
+		buf.Contents = string(contents)
+	} else {
+		return FileBuffer{}, &os.PathError{
+			Op:   "holocm.org/plugins/filesplugin.NewFileBuffer",
+			Path: path,
+			Err:  errors.New("not a manageable file"),
+		}
 	}
 
-	//other types of files are not acceptable
-	return nil, &os.PathError{
-		Op:   "holocm.org/plugins/files.NewFileBuffer",
-		Path: path,
-		Err:  errors.New("not a manageable file"),
-	}
+	return buf, nil
 }
 
-// NewFileBufferFromContents creates a file buffer containing the
-// given byte array. The basePath is stored in the FileBuffer for use
-// in FileBuffer.ResolveSymlink().
-func NewFileBufferFromContents(fileContents []byte, basePath string) *FileBuffer {
-	return &FileBuffer{
-		Contents:      fileContents,
-		SymlinkTarget: "",
-		BasePath:      basePath,
-	}
-}
-
-func (fb *FileBuffer) Write(path string) error {
-	//(check that we're not attempting to overwrite unmanageable files
+func (fb FileBuffer) Write(path string) error {
+	// Check that we're not attempting to overwrite unmanageable
+	// files.
 	info, err := os.Lstat(path)
 	if err != nil && !os.IsNotExist(err) {
-		//abort because the target location could not be statted
+		// Abort because the target location could not be
+		// stat()ed
 		return err
 	}
 	if err == nil {
 		if !IsManageableFileInfo(info) {
 			return &os.PathError{
-				Op:   "holocm.org/plugins/files.FileBuffer.Write",
+				Op:   "holocm.org/plugins/filesplugin.FileBuffer.Write",
 				Path: path,
 				Err:  errors.New("target exists and is not a manageable file"),
 			}
 		}
 	}
 
-	//before writing to the target, remove what was there before
+	// Before writing to the target, remove what was there before
 	err = os.Remove(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
-	//a manageable file is either a regular file...
-	if fb.Contents != nil {
-		return ioutil.WriteFile(path, fb.Contents, 600)
+	if fb.Mode&os.ModeSymlink == 0 {
+		err = ioutil.WriteFile(path, []byte(fb.Contents), fb.Mode)
+		if err != nil {
+			return err
+		}
+		// apply mode (necessary because the mode passed to
+		// WriteFile is only used if the file does not yet
+		// exist).
+		err = os.Chmod(path, fb.Mode)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = os.Symlink(fb.Contents, path)
+		if err != nil {
+			return err
+		}
+		// Symlinks don't have mode (on most systems).
 	}
-	//...or a symlink
-	return os.Symlink(fb.SymlinkTarget, path)
+	// apply ownership
+	return os.Lchown(path, fb.Uid, fb.Gid)
 }
 
-//ResolveSymlink takes a FileBuffer that contains a symlink, resolves it and
-//returns a new FileBuffer containing the contents of the symlink target. This
-//operation is used by application strategies that require text input. If
-//the given FileBuffer contains file contents, the same buffer is returned
-//unaltered.
+// ResolveSymlink takes a FileBuffer that contains a symlink, resolves
+// it, and returns a new FileBuffer containing the contents of the
+// symlink target.
 //
-//It uses the FileBuffer's BasePath to resolve relative symlinks. Since
-//file buffers are usually written to the target path of a `holo apply`
-//operation, the BasePath is most likely the target path.
-func (fb *FileBuffer) ResolveSymlink() (*FileBuffer, error) {
-	//if the buffer has contents already, we can use that
-	if fb.Contents != nil {
+// This operation is used by application strategies that require text
+// input.  If the given FileBuffer contains file contents, the same
+// FileBuffer is returned unaltered.
+//
+// It uses the FileBuffer's Path to resolve relative symlinks.
+func (fb FileBuffer) ResolveSymlink() (FileBuffer, error) {
+	// If the FileBuffer isn't a symlink, we can just return it.
+	if fb.Mode&os.ModeSymlink == 0 {
 		return fb, nil
 	}
 
-	//if the symlink target is relative, resolve it
-	target := fb.SymlinkTarget
+	// If the symlink target is relative, resolve it
+	target := fb.Contents
 	if !filepath.IsAbs(target) {
-		baseDir := filepath.Dir(fb.BasePath)
-		target = filepath.Join(baseDir, target)
+		target = filepath.Join(filepath.Dir(fb.Path), target)
 	}
 
-	// read the contents of the target file
-	//
-	// Note: It's tempting to just use NewFileBuffer here, but
-	// that might give us another FileBuffer with a symlink in it,
-	// and this time the symlink target might not resolve
-	// correctly against the original BasePath. So we explicitly
-	// read the file.
-	contents, err := ioutil.ReadFile(target)
-	if err != nil {
-		return nil, err
-	}
-	return NewFileBufferFromContents(contents, fb.BasePath), nil
-}
-
-//EqualTo returns whether two file buffers have the same content (or link target).
-func (fb *FileBuffer) EqualTo(other *FileBuffer) bool {
-	if fb.Contents != nil {
-		return bytes.Equal(fb.Contents, other.Contents)
-	}
-	return fb.SymlinkTarget == other.SymlinkTarget
+	return NewFileBuffer(target, true)
 }

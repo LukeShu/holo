@@ -45,6 +45,7 @@ func (target *FilesEntity) scanOrphanedTargetBase() (theTargetPath, strategy, as
 func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []error {
 	targetPath, strategy, _ := target.scanOrphanedTargetBase()
 	targetBasePath := filepath.Join(target.plugin.Runtime.StateDirPath+"/base", target.relPath)
+	lastProvisionedPath := filepath.Join(target.plugin.Runtime.StateDirPath+"/provisioned", target.relPath)
 
 	var errs []error
 	appendError := func(err error) {
@@ -69,9 +70,12 @@ func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []
 			fmt.Fprintf(stdout, ">> also deleting %s\n", otherFile)
 			appendError(os.Remove(otherFile))
 		}
+		appendError(os.Remove(lastProvisionedPath))
+		appendError(os.Remove(targetBasePath))
 	case "restore":
-		//target is still there - restore the target base, *but* before that,
-		//check if there is an updated target base
+		// target is still there - restore the target base,
+		// *but* before that, check if there is an updated
+		// target base
 		updatedTBPath, reportedTBPath, err := GetPackageManager(stdout, stderr).FindUpdatedTargetBase(targetPath)
 		appendError(err)
 		if updatedTBPath != "" {
@@ -81,19 +85,12 @@ func (target *FilesEntity) handleOrphanedTargetBase(stdout, stderr io.Writer) []
 			targetBasePath = updatedTBPath
 		}
 
-		//now really restore the target base
-		appendError(fileutil.CopyFile(targetBasePath, targetPath))
+		// now really restore the target base
+		appendError(os.Remove(lastProvisionedPath))
+		appendError(fileutil.MoveFile(targetBasePath, targetPath))
 	}
-
-	//target is not managed by Holo anymore, so delete the provisioned target and the target base
-	lastProvisionedPath := filepath.Join(target.plugin.Runtime.StateDirPath+"/provisioned", target.relPath)
-	err := os.Remove(lastProvisionedPath)
-	if err != nil && !os.IsNotExist(err) {
-		appendError(err)
-	}
-	appendError(os.Remove(targetBasePath))
 
 	// TODO(majewsky): cleanup empty directories below
-	// StateDirPath+"/provisioned" and StateDirPath+"/provisioned"
+	// StateDirPath+"/provisioned" and StateDirPath+"/base"
 	return errs
 }

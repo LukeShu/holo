@@ -66,7 +66,7 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		// create new FilesEntity if necessary and store the
 		// repo entry in it
 		repoEntry := p.NewRepoFile(repoPath)
-		targetPath := repoEntry.TargetPath()
+		targetPath := repoEntry.TargetPath
 		if targets[targetPath] == nil {
 			targets[targetPath] = p.NewFilesEntity(p.Runtime.RootDirPath, targetPath)
 		}

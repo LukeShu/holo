@@ -21,7 +21,6 @@
 package filesplugin
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -30,65 +29,23 @@ import (
 // The string stored in it is the path to the repo file (also
 // accessible as Path()).
 type RepoFile struct {
-	path   string
-	plugin FilesPlugin
+	Path string
+
+	TargetPath    string
+	Disambiguator string
 }
 
 // NewRepoFile creates a RepoFile instance when its path in the file
 // system is known.
 func (p FilesPlugin) NewRepoFile(path string) RepoFile {
-	return RepoFile{path, p}
-}
+	relPath, _ := filepath.Rel(p.Runtime.ResourceDirPath, strings.TrimSuffix(path, ".holoscript"))
+	segments := strings.SplitN(relPath, string(filepath.Separator), 2)
 
-//Path returns the path to this repo file in the file system.
-func (file RepoFile) Path() string {
-	return file.path
-}
-
-//TargetPath returns the path to the corresponding target file.
-func (file RepoFile) TargetPath() string {
-	// the optional ".holoscript" suffix appears only on repo
-	// files
-	repoFile := file.Path()
-	if strings.HasSuffix(repoFile, ".holoscript") {
-		repoFile = strings.TrimSuffix(repoFile, ".holoscript")
+	return RepoFile{
+		Path:          path,
+		TargetPath:    filepath.Join(p.Runtime.RootDirPath, segments[1]),
+		Disambiguator: segments[0],
 	}
-
-	// make path relative
-	relPath, _ := filepath.Rel(file.plugin.Runtime.ResourceDirPath, repoFile)
-
-	// remove the disambiguation path element to get to the
-	// relPath for the ConfigFile
-	//
-	// e.g.
-	//
-	//     repoFile = '/usr/share/holo/files/23-foo/etc/foo.conf'
-	//  -> relPath  = '23-foo/etc/foo.conf'
-	//  -> relPath  = 'etc/foo.conf'
-	segments := strings.SplitN(relPath, fmt.Sprintf("%c", filepath.Separator), 2)
-	relPath = segments[1]
-
-	return filepath.Join(file.plugin.Runtime.RootDirPath, relPath)
-}
-
-// Disambiguator returns the disambiguator, i.e. the Path() element
-// before the TargetPath() that disambiguates multiple repo entries
-// for the same target file.
-func (file RepoFile) Disambiguator() string {
-	//make path relative to Runtime.ResourceDirPath
-	relPath, _ := filepath.Rel(file.plugin.Runtime.ResourceDirPath, file.Path())
-	//the disambiguator is the first path element in there
-	segments := strings.SplitN(relPath, fmt.Sprintf("%c", filepath.Separator), 2)
-	return segments[0]
-}
-
-// ApplicationStrategy returns the human-readable name for the
-// strategy that will be employed to apply this repo file.
-func (file RepoFile) ApplicationStrategy() string {
-	if strings.HasSuffix(file.Path(), ".holoscript") {
-		return "passthru"
-	}
-	return "apply"
 }
 
 // DiscardsPreviousBuffer indicates whether applying this file will
@@ -97,7 +54,7 @@ func (file RepoFile) ApplicationStrategy() string {
 // application algorithm to decide whether application steps can be
 // skipped completely.
 func (file RepoFile) DiscardsPreviousBuffer() bool {
-	return file.ApplicationStrategy() == "apply"
+	return !strings.HasSuffix(file.Path, ".holoscript")
 }
 
 // RepoFiles holds a slice of RepoFile instances, and implements some
@@ -105,5 +62,5 @@ func (file RepoFile) DiscardsPreviousBuffer() bool {
 type RepoFiles []RepoFile
 
 func (f RepoFiles) Len() int           { return len(f) }
-func (f RepoFiles) Less(i, j int) bool { return f[i].Disambiguator() < f[j].Disambiguator() }
+func (f RepoFiles) Less(i, j int) bool { return f[i].Disambiguator < f[j].Disambiguator }
 func (f RepoFiles) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }

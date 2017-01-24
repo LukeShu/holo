@@ -35,50 +35,17 @@ import (
 // FilesEntity.  This includes taking a copy of the target base if
 // necessary, applying all repository entries, and saving the result
 // in the target path with the correct file metadata.
-func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo.ApplyResult, error) {
+func (target *FilesEntity) apply(haveForce bool, stdout, stderr io.Writer) (holo.ApplyResult, error) {
 	// determine the related paths
 	targetPath := filepath.Join(target.plugin.Runtime.RootDirPath, target.relPath)
 	targetBasePath := filepath.Join(target.plugin.Runtime.StateDirPath+"/base", target.relPath)
 
-	// step 1: will only apply targets if:
-	//
-	// - option 1: there is a manageable file in the target
-	//   location (this target file is either the target base from
-	//   the application package or the product of a previous
-	//   Apply run)
-	//
-	// - option 2: the target file was deleted, but we have a
-	//   target base that we can start from
-	needForcefulReprovision := false
-	targetExists := fileutil.IsManageableFile(targetPath)
-	if !targetExists {
-		if !fileutil.IsManageableFile(targetBasePath) {
-			return nil, errors.New("skipping target: not a manageable file")
-		}
-		if withForce {
-			needForcefulReprovision = true
-		} else {
-			return holo.ApplyExternallyDeleted, nil
-		}
-	}
-
-	// step 2: if we don't have a target base yet, the file at
-	// targetPath *is* the targetBase which we have to copy now
-	if !fileutil.IsManageableFile(targetBasePath) {
-		targetBaseDir := filepath.Dir(targetBasePath)
-		err := os.MkdirAll(targetBaseDir, 0755)
-		if err != nil {
-			return nil, fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error())
-		}
-
-		err = fileutil.CopyFile(targetPath, targetBasePath)
-		if err != nil {
-			return nil, fmt.Errorf("Cannot copy %s to %s: %s", targetPath, targetBasePath, err.Error())
-		}
-	}
-
-	// step 3: check if a system update installed a new version of
+	// step 1: check if a system update installed a new version of
 	// the stock configuration
+	//
+	// This has to come before reading the targetPath because the
+	// package manager might shuffle around files to simplify
+	// things.
 	updatedTBPath, reportedTBPath, err := GetPackageManager(stdout, stderr).FindUpdatedTargetBase(targetPath)
 	if err != nil {
 		return nil, err
@@ -88,74 +55,91 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		// updatedTBPath (but show it to the user as
 		// reportedTBPath).
 		fmt.Fprintf(stdout, ">> found updated target base: %s -> %s", reportedTBPath, targetBasePath)
-		err := fileutil.CopyFile(updatedTBPath, targetBasePath)
+		err := fileutil.MoveFile(updatedTBPath, targetBasePath)
 		if err != nil {
-			return nil, fmt.Errorf("Cannot copy %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
+			return nil, fmt.Errorf("Cannot move %s to %s: %s", updatedTBPath, targetBasePath, err.Error())
 		}
-		_ = os.Remove(updatedTBPath) // this can fail silently
 	}
 
-	// step 4: apply the repo files *iff* the version at
-	// targetPath is the one installed by the package (which can
-	// be found at targetBasePath); complain if the user made any
-	// changes to config files governed by holo (this check is
-	// overridden by the --force option)
+	// step 2: Read the target file in.
+	//
+	// - option 1: there is a manageable file in the target
+	//   location (this target file is either the target base from
+	//   the application package or the product of a previous
+	//   Apply run)
+	//
+	// - option 2: the target file was deleted, but we have a
+	//   target base that we can start from
+	forceReprovision := false
+	targetBuffer, err := fileutil.NewFileBuffer(targetPath, false)
+	if err != nil {
+		targetBuffer, err = fileutil.NewFileBuffer(targetBasePath, false)
+		targetBuffer.Path = targetPath
+		if err != nil {
+			return nil, errors.New("skipping target: not a manageable file")
+		}
+		if !haveForce {
+			return holo.ApplyExternallyDeleted, nil
+		}
+		forceReprovision = true
+	}
 
-	// load the last provisioned version
-	var lastProvisionedBuffer *fileutil.FileBuffer
+	// step 3: verify that the version at targetPath has not been
+	// tampered with.
+	var lastProvisionedBuffer fileutil.FileBuffer
 	lastProvisionedPath := filepath.Join(target.plugin.Runtime.StateDirPath+"/provisioned", target.relPath)
-	if fileutil.IsManageableFile(lastProvisionedPath) {
-		lastProvisionedBuffer, err = fileutil.NewFileBuffer(lastProvisionedPath, targetPath)
-		if err != nil {
-			return nil, err
-		}
+	lastProvisionedBuffer, err = fileutil.NewFileBuffer(lastProvisionedPath, false)
+	lastProvisionedBuffer.Path = targetPath
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
 	}
-
-	// compare it against the target version (which must exist at
-	// this point unless we are using --force)
-	if targetExists && lastProvisionedBuffer != nil {
-		targetBuffer, err := fileutil.NewFileBuffer(targetPath, targetPath)
-		if err != nil {
-			return nil, err
-		}
-		if !targetBuffer.EqualTo(lastProvisionedBuffer) {
-			if withForce {
-				needForcefulReprovision = true
-			} else {
+	if !os.IsNotExist(err) {
+		if targetBuffer != lastProvisionedBuffer {
+			if !haveForce {
 				return holo.ApplyExternallyChanged, nil
 			}
+			forceReprovision = true
 		}
 	}
 
-	//check if we can skip any application steps (firstStep = -1 means: start
-	//with loading the target base and apply all steps, firstStep >= 0 means:
-	//start at that application step with an empty buffer)
-	firstStep := -1
+	// step 4: apply the repo files
+
+	// Load the target base into a buffer as the start for the
+	// application algorithm.
+	buffer, err := fileutil.NewFileBuffer(targetBasePath, false)
+	if os.IsNotExist(err) {
+		// if we don't have a target base yet, the file at
+		// targetPath *is* the targetBase which we have to
+		// copy now
+		targetBaseDir := filepath.Dir(targetBasePath)
+		err = os.MkdirAll(targetBaseDir, 0755)
+		if err != nil {
+			return nil, fmt.Errorf("Cannot create directory %s: %s", targetBaseDir, err.Error())
+		}
+		err = targetBuffer.Write(targetBasePath)
+		if err != nil {
+			return nil, fmt.Errorf("Cannot copy %s to %s: %s", targetPath, targetBasePath, err.Error())
+		}
+		buffer, err = fileutil.NewFileBuffer(targetBasePath, false)
+	}
+	if err != nil {
+		return nil, err
+	}
+	buffer.Path = targetPath
+
+	// Get the list of RepoFiles to apply to buffer.
 	repoEntries := target.RepoEntries()
+
+	// Optimization: check if we can skip any steps.
+	firstStep := 0
 	for idx, repoFile := range repoEntries {
 		if repoFile.DiscardsPreviousBuffer() {
 			firstStep = idx
 		}
 	}
+	repoEntries = repoEntries[firstStep:]
 
-	// load the target base into a buffer as the start for the
-	// application algorithm, unless it will be discarded by an
-	// application step
-	var buffer *fileutil.FileBuffer
-	if firstStep == -1 {
-		buffer, err = fileutil.NewFileBuffer(targetBasePath, targetPath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		buffer = fileutil.NewFileBufferFromContents([]byte(nil), targetPath)
-	}
-
-	// apply all the applicable repo files in order (starting from
-	// the first one that matters)
-	if firstStep > 0 {
-		repoEntries = repoEntries[firstStep:]
-	}
+	// Apply all the applicable repo files in order
 	for _, repoFile := range repoEntries {
 		buffer, err = repoFile.ApplyTo(buffer, stdout, stderr)
 		if err != nil {
@@ -163,9 +147,10 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 		}
 	}
 
-	// don't do anything more if nothing has changed and the
-	// target file has not been touched
-	if !needForcefulReprovision && lastProvisionedBuffer != nil && buffer.EqualTo(lastProvisionedBuffer) {
+	// step 5: write the results to the filesystem.
+
+	// Don't actually hit the filesystem if nothing has changed.
+	if buffer == lastProvisionedBuffer && !forceReprovision {
 		// since we did not do anything, don't report this
 		return holo.ApplyAlreadyApplied, nil
 	}
@@ -175,25 +160,17 @@ func (target *FilesEntity) apply(withForce bool, stdout, stderr io.Writer) (holo
 	provisionedDir := filepath.Dir(lastProvisionedPath)
 	err = os.MkdirAll(provisionedDir, 0755)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot write %s: %s", lastProvisionedPath, err.Error())
+		return nil, fmt.Errorf("Cannot create directory %s: %s", provisionedDir, err.Error())
 	}
 	err = buffer.Write(lastProvisionedPath)
 	if err != nil {
-		return nil, err
-	}
-	err = fileutil.ApplyFilePermissions(targetBasePath, lastProvisionedPath)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Cannot write %s: %s", lastProvisionedPath, err.Error())
 	}
 
 	// write the result buffer to the target location and copy
 	// owners/permissions from target base to target file
 	newTargetPath := targetPath + ".holonew"
 	err = buffer.Write(newTargetPath)
-	if err != nil {
-		return nil, err
-	}
-	err = fileutil.ApplyFilePermissions(targetBasePath, newTargetPath)
 	if err != nil {
 		return nil, err
 	}

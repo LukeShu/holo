@@ -21,9 +21,7 @@
 package fileutil
 
 import (
-	"io/ioutil"
 	"os"
-	"syscall"
 )
 
 // IsManageableFile returns whether the file can be managed by Holo
@@ -45,44 +43,17 @@ func IsManageableFileInfo(info os.FileInfo) bool {
 // CopyFile copies a regular file or symlink, including the file
 // metadata.
 func CopyFile(fromPath, toPath string) error {
-	info, err := os.Lstat(fromPath)
+	buf, err := NewFileBuffer(fromPath, false)
 	if err != nil {
 		return err
 	}
-	if info.Mode().IsRegular() {
-		// regular file
-		data, err := ioutil.ReadFile(fromPath)
+	if buf.Mode&os.ModeSymlink != 0 && IsManageableFile(toPath) {
+		err = os.Remove(toPath)
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(toPath, data, 0600)
-		if err != nil {
-			return err
-		}
-		return ApplyFilePermissions(fromPath, toPath)
-	} else {
-		// symbolic link
-
-		//read link target
-		target, err := os.Readlink(fromPath)
-		if err != nil {
-			return err
-		}
-		//remove old file or link if it exists
-		if IsManageableFile(toPath) {
-			err = os.Remove(toPath)
-			if err != nil {
-				return err
-			}
-		}
-		//create new link
-		err = os.Symlink(target, toPath)
-		if err != nil {
-			return err
-		}
-
-		return nil
 	}
+	return buf.Write(toPath)
 }
 
 // MoveFile is like CopyFile, but it removes the fromPath after
@@ -93,40 +64,4 @@ func MoveFile(fromPath, toPath string) error {
 		return err
 	}
 	return os.Remove(fromPath)
-}
-
-// ApplyFilePermissions applies permission flags and ownership from
-// the first file to the second file.
-func ApplyFilePermissions(fromPath, toPath string) error {
-	// apply permissions, ownership, modification date from source
-	// file to target file
-	//
-	// Note: We cannot just pass the FileMode in WriteFile(),
-	// because its FileMode argument is only applied when a new
-	// file is created, not when an existing one is truncated.
-	info, err := os.Lstat(fromPath)
-	if err != nil {
-		return err
-	}
-	targetInfo, err := os.Lstat(toPath)
-	if err != nil {
-		return err
-	}
-
-	if targetInfo.Mode()&os.ModeSymlink == 0 {
-		// apply permissions
-		err = os.Chmod(toPath, info.Mode())
-		if err != nil {
-			return err
-		}
-
-		// apply ownership
-		stat := info.Sys().(*syscall.Stat_t) // FIXME(majewsky): ugly
-		err = os.Chown(toPath, int(stat.Uid), int(stat.Gid))
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
