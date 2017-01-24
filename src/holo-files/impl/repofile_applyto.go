@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"../common"
 )
@@ -32,29 +33,37 @@ import (
 //ApplyTo applies this RepoFile to a file buffer, as part of the `holo apply`
 //algorithm. Regular repofiles will replace the file buffer, while a holoscript
 //will be executed on the file buffer to obtain the new buffer.
-func (file RepoFile) ApplyTo(buffer *common.FileBuffer) (*common.FileBuffer, error) {
+func (file RepoFile) ApplyTo(buffer common.FileBuffer) (common.FileBuffer, error) {
 	if file.ApplicationStrategy() == "apply" {
-		return common.NewFileBuffer(file.Path(), buffer.BasePath)
+		repoBuffer, err := common.NewFileBuffer(file.Path())
+		if err != nil {
+			return common.FileBuffer{}, err
+		}
+		buffer.Mode = (buffer.Mode &^ os.ModeType) | (repoBuffer.Mode & os.ModeType)
+		buffer.Contents = repoBuffer.Contents
+		return buffer, nil
 	}
 
 	//application of a holoscript requires file contents
 	buffer, err := buffer.ResolveSymlink()
 	if err != nil {
-		return nil, err
+		return common.FileBuffer{}, err
 	}
 
 	//run command, fetch result file into buffer (not into the targetPath
 	//directly, in order not to corrupt the file there if the script run fails)
 	var stdout bytes.Buffer
 	cmd := exec.Command(file.Path())
-	cmd.Stdin = bytes.NewBuffer(buffer.Contents)
+	cmd.Stdin = strings.NewReader(buffer.Contents)
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		return nil, fmt.Errorf("execution of %s failed: %s", file.Path(), err.Error())
+		return common.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", file.Path(), err.Error())
 	}
 
 	//result is the stdout of the script
-	return common.NewFileBufferFromContents(stdout.Bytes(), buffer.BasePath), nil
+	buffer.Mode &^= os.ModeType
+	buffer.Contents = stdout.String()
+	return buffer, nil
 }

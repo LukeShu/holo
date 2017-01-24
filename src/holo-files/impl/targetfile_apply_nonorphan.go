@@ -95,23 +95,23 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	//overridden by the --force option)
 
 	//load the last provisioned version
-	var lastProvisionedBuffer *common.FileBuffer
 	lastProvisionedPath := target.PathIn(common.ProvisionedDirectory())
-	if common.IsManageableFile(lastProvisionedPath) {
-		lastProvisionedBuffer, err = common.NewFileBuffer(lastProvisionedPath, targetPath)
-		if err != nil {
-			return false, err
-		}
+	lastProvisionedBuffer, err := common.NewFileBuffer(lastProvisionedPath)
+	lastProvisionedBuffer.Path = targetPath
+	haveLastProvisionedBuffer := !os.IsNotExist(err)
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
 	}
 
 	//compare it against the target version (which must exist at this point
 	//unless we are using --force)
-	if targetExists && lastProvisionedBuffer != nil {
-		targetBuffer, err := common.NewFileBuffer(targetPath, targetPath)
+	if targetExists && haveLastProvisionedBuffer {
+		targetBuffer, err := common.NewFileBuffer(targetPath)
+		targetBuffer.Path = targetPath
 		if err != nil {
 			return false, err
 		}
-		if !targetBuffer.EqualTo(lastProvisionedBuffer) {
+		if targetBuffer != lastProvisionedBuffer {
 			if withForce {
 				needForcefulReprovision = true
 			} else {
@@ -127,8 +127,8 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 	}
 
 	//don't do anything more if nothing has changed and the target file has not been touched
-	if !needForcefulReprovision && lastProvisionedBuffer != nil {
-		if buffer.EqualTo(lastProvisionedBuffer) {
+	if !needForcefulReprovision && haveLastProvisionedBuffer {
+		if buffer == lastProvisionedBuffer {
 			//since we did not do anything, don't report this
 			return true, nil
 		}
@@ -167,11 +167,9 @@ func (target *TargetFile) applyNonOrphan(withForce bool) (skipReport bool, err e
 }
 
 //Render applies all the repo files for this TargetFile onto the target base.
-func (t *TargetFile) Render() (*common.FileBuffer, error) {
-	//check if we can skip any application steps (firstStep = -1 means: start
-	//with loading the target base and apply all steps, firstStep >= 0 means:
-	//start at that application step with an empty buffer)
-	firstStep := -1
+func (t *TargetFile) Render() (common.FileBuffer, error) {
+	//check if we can skip any application steps
+	firstStep := 0
 	repoEntries := t.RepoEntries()
 	for idx, repoFile := range repoEntries {
 		if repoFile.DiscardsPreviousBuffer() {
@@ -180,20 +178,17 @@ func (t *TargetFile) Render() (*common.FileBuffer, error) {
 	}
 
 	//load the target base into a buffer as the start for the application
-	//algorithm, unless it will be discarded by an application step
+	//algorithm
 	targetBasePath := t.PathIn(common.TargetBaseDirectory())
 	targetPath := t.PathIn(common.TargetDirectory())
 	var (
-		buffer *common.FileBuffer
+		buffer common.FileBuffer
 		err    error
 	)
-	if firstStep == -1 {
-		buffer, err = common.NewFileBuffer(targetBasePath, targetPath)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		buffer = common.NewFileBufferFromContents([]byte(nil), targetPath)
+	buffer, err = common.NewFileBuffer(targetBasePath)
+	buffer.Path = targetPath
+	if err != nil {
+		return common.FileBuffer{}, err
 	}
 
 	//apply all the applicable repo files in order (starting from the first one
@@ -204,7 +199,7 @@ func (t *TargetFile) Render() (*common.FileBuffer, error) {
 	for _, repoFile := range repoEntries {
 		buffer, err = repoFile.ApplyTo(buffer)
 		if err != nil {
-			return nil, err
+			return common.FileBuffer{}, err
 		}
 	}
 
