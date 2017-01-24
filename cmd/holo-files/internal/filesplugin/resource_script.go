@@ -54,13 +54,13 @@ func (resource Holoscript) ApplyTo(entityBuffer fileutil.FileBuffer, stdout, std
 	// entity directly, in order not to corrupt the file there if
 	// the script run fails)
 	var out bytes.Buffer
-	cmd := exec.Command(resource.Path())
+	cmd := exec.Command(resource.Path)
 	cmd.Stdin = strings.NewReader(entityBuffer.Contents)
 	cmd.Stdout = &out
 	cmd.Stderr = stderr
 	err = cmd.Run()
 	if err != nil {
-		return fileutil.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", resource.Path(), err.Error())
+		return fileutil.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", resource.Path, err.Error())
 	}
 
 	// result is the stdout of the script

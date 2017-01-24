@@ -40,7 +40,7 @@ func (resource StaticResource) DiscardsPreviousBuffer() bool { return true }
 
 // ApplyTo implements the Resource interface.
 func (resource StaticResource) ApplyTo(entityBuffer fileutil.FileBuffer, stdout, stderr io.Writer) (fileutil.FileBuffer, error) {
-	resourceBuffer, err := fileutil.NewFileBuffer(resource.Path())
+	resourceBuffer, err := fileutil.NewFileBuffer(resource.Path)
 	if err != nil {
 		return fileutil.FileBuffer{}, err
 	}

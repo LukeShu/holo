@@ -44,6 +44,7 @@ func (entity *FilesEntity) scanOrphan() (targetPath, strategy, assessment string
 func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 	_, strategy, _ := entity.scanOrphan()
 	basePath := filepath.Join(entity.plugin.Runtime.StateDirPath, "base", entity.relPath)
+	lastProvisionedPath := filepath.Join(entity.plugin.Runtime.StateDirPath, "provisioned", entity.relPath)
 
 	var errs []error
 	appendError := func(err error) {
@@ -80,8 +81,9 @@ func (entity *FilesEntity) applyOrphan(stdout, stderr io.Writer) []error {
 		appendError(os.Remove(provisioned.Path))
 		appendError(os.Remove(basePath))
 	case "restore":
-		//target is still there - restore the target base, *but* before that,
-		//check if there is an updated target base
+		// target is still there - restore the target base,
+		// *but* before that, check if there is an updated
+		// target base
 		updatedTBPath, reportedTBPath, err := GetPackageManager(entity.plugin.Runtime.RootDirPath, stdout, stderr).FindUpdatedTargetBase(current.Path)
 		appendError(err)
 		if updatedTBPath != "" {

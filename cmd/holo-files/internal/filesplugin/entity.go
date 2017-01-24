@@ -25,6 +25,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/holocm/holo/lib/holo"
 )
@@ -85,7 +86,7 @@ func (entity *FilesEntity) EntitySource() []string {
 	}
 	var ret []string
 	for _, resource := range entity.Resources() {
-		ret = append(ret, resource.Path())
+		ret = append(ret, resource.Path)
 	}
 	return ret
 }
@@ -99,7 +100,11 @@ func (entity *FilesEntity) EntityUserInfo() (r []holo.KV) {
 	} else {
 		r = append(r, holo.KV{"store at", filepath.Join(entity.plugin.Runtime.StateDirPath, "base", entity.relPath)})
 		for _, resource := range entity.Resources() {
-			r = append(r, holo.KV{resource.ApplicationStrategy(), resource.Path()})
+			if strings.HasSuffix(resource.Path, ".holoscript") {
+				r = append(r, holo.KV{"passthru", resource.Path})
+			} else {
+				r = append(r, holo.KV{"apply", resource.Path})
+			}
 		}
 	}
 	return r

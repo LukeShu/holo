@@ -65,7 +65,7 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 		// create new FilesEntity if necessary and store the
 		// resource in it
 		resource := p.NewResource(resourcePath)
-		entityPath := resource.EntityPath()
+		entityPath := resource.EntityPath
 		if entities[entityPath] == nil {
 			entities[entityPath] = p.NewFilesEntity(entityPath)
 		}

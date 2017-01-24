@@ -59,26 +59,23 @@ type Resource interface {
 }
 
 type rawResource struct {
-	path          string
-	disambiguator string
-	entityPath    string
-	plugin        FilesPlugin
-}
+	Path          string
+	EntityPath    string
+	Disambiguator string
 
-func (resource rawResource) Path() string          { return resource.path }
-func (resource rawResource) Disambiguator() string { return resource.disambiguator }
-func (resource rawResource) EntityPath() string    { return resource.entityPath }
+	plugin FilesPlugin
+}
 
 // NewResource creates a Resource instance when its path in the file
 // system is known.
 func (p FilesPlugin) NewResource(path string) Resource {
-	relPath, _ := filepath.Rel(p.Runtime.ResourceDirPath, path)
+	relPath, _ := filepath.Rel(p.Runtime.ResourceDirPath, strings.TrimSuffix(path, ".holoscript"))
 	segments := strings.SplitN(relPath, string(filepath.Separator), 2)
 	ext := filepath.Ext(segments[1])
 	raw := rawResource{
-		path:          path,
-		disambiguator: segments[0],
-		entityPath:    strings.TrimSuffix(segments[1], ext),
+		Path:          path,
+		Disambiguator: segments[0],
+		EntityPath:    filepath.Join(p.Runtime.RootDirPath, strings.TrimSuffix(segments[1], ext)),
 		plugin:        p,
 	}
 	switch ext {
@@ -97,5 +94,5 @@ func (p FilesPlugin) NewResource(path string) Resource {
 type Resources []Resource
 
 func (f Resources) Len() int           { return len(f) }
-func (f Resources) Less(i, j int) bool { return f[i].Disambiguator() < f[j].Disambiguator() }
+func (f Resources) Less(i, j int) bool { return f[i].Disambiguator < f[j].Disambiguator }
 func (f Resources) Swap(i, j int)      { f[i], f[j] = f[j], f[i] }
