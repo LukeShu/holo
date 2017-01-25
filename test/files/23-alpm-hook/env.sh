@@ -5,6 +5,7 @@ holo_wrapper() (
 	HOLO_ROOT_DIR=.
 	case "$1" in
 		apply)
+			unset HOLO_ROOT_DIR
 			printf '%s\n' \
 			       etc/targetfile-deleted-with-pacsave.conf \
 			       etc/targetfile-with-pacnew.conf \
