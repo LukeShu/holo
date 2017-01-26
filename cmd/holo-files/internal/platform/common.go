@@ -36,7 +36,7 @@ import (
 
 //Impl provides integration points with a distribution's toolchain.
 type Impl interface {
-	//FindUpdatedTargetBase is called as part of the repo file application
+	//FindUpdatedTargetBase is called as part of the resource application
 	//algorithm. If the system package manager updates a file which has been
 	//modified by Holo, it will usually place the new stock configuration next
 	//to the targetPath (usually with a special suffix). If such a file exists,
