@@ -34,8 +34,8 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/common"
 )
 
-//Impl provides integration points with a distribution's toolchain.
-type Impl interface {
+// PackageManager provides integration points with a distribution's toolchain.
+type PackageManager interface {
 	//FindUpdatedTargetBase is called as part of the resource application
 	//algorithm. If the system package manager updates a file which has been
 	//modified by Holo, it will usually place the new stock configuration next
@@ -56,36 +56,36 @@ type Impl interface {
 	AdditionalCleanupTargets(targetPath string) []string
 }
 
-var impl Impl
+var pm PackageManager
 
-//Implementation returns the most suitable platform implementation for the
-//current system.
-func Implementation() Impl {
-	if impl == nil {
+// GetPackageManager returns the most suitable platform implementation
+// for the current system.
+func GetPackageManager() PackageManager {
+	if pm == nil {
 		//which distribution are we running on?
-		isDist := GetCurrentDistribution()
+		isDist := getOsRelease()
 		switch {
 		case isDist["alpine"]:
-			impl = apkImpl{}
+			pm = pmAlpine{}
 		case isDist["arch"]:
-			impl = archImpl{}
+			pm = pmPacman{}
 		case isDist["debian"]:
-			impl = dpkgImpl{}
+			pm = pmDPKG{}
 		case isDist["fedora"], isDist["suse"]:
-			impl = rpmImpl{}
-		case isDist["unittest"]:
-			impl = genericImpl{}
+			pm = pmRPM{}
+		case isDist["unittest"]: // intentionally undocumented
+			pm = pmNone{}
 		default:
-			ReportUnsupportedDistribution(isDist)
-			impl = genericImpl{}
+			reportUnsupportedDistribution(isDist)
+			pm = pmNone{}
 		}
 	}
-	return impl
+	return pm
 }
 
-//GetCurrentDistribution returns a set of distribution IDs, drawing on the ID=
-//and ID_LIKE= fields of os-release(5).
-func GetCurrentDistribution() map[string]bool {
+// getOsRelease returns a set of distribution IDs, drawing on the ID=
+// and ID_LIKE= fields of os-release(5).
+func getOsRelease() map[string]bool {
 	//read /etc/os-release, fall back to /usr/lib/os-release if not available
 	bytes, err := ioutil.ReadFile(filepath.Join(common.TargetDirectory(), "etc/os-release"))
 	if err != nil {
@@ -137,9 +137,9 @@ func GetCurrentDistribution() map[string]bool {
 	return result
 }
 
-//ReportUnsupportedDistribution prints the standard warning that the current
-//executable is running on an unsupported distribution.
-func ReportUnsupportedDistribution(isDist map[string]bool) {
+// reportUnsupportedDistribution prints the standard warning that the
+// current executable is running on an unsupported distribution.
+func reportUnsupportedDistribution(isDist map[string]bool) {
 	dists := make([]string, 0, len(isDist))
 	for dist := range isDist {
 		dists = append(dists, dist)

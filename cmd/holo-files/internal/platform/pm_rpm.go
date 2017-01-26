@@ -26,35 +26,36 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/common"
 )
 
-//dpkgImpl provides the platform.Impl for dpkg-based distributions (Debian and derivatives).
-type dpkgImpl struct{}
+// pmRPM provides the platform.PackageManager for RPM-based
+// distributions.
+type pmRPM struct{}
 
-func (p dpkgImpl) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
-	dpkgDistPath := targetPath + ".dpkg-dist" //may be an updated target base
-	dpkgOldPath := targetPath + ".dpkg-old"   //may be a backup of the last provisioned target when the updated target base is at targetPath
+func (p pmRPM) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+	rpmnewPath := targetPath + ".rpmnew"   //may be an updated target base
+	rpmsavePath := targetPath + ".rpmsave" //may be a backup of the last provisioned target when the updated target base is at targetPath
 
-	//if "${target}.dpkg-old" exists, move it back to $target and move the
-	//updated target base to "${target}.dpkg-dist" so that the usual application
+	//if "${target}.rpmsave" exists, move it back to $target and move the
+	//updated target base to "${target}.rpmnew" so that the usual application
 	//logic can continue
-	if common.IsManageableFile(dpkgOldPath) {
-		err := common.MoveFile(targetPath, dpkgDistPath)
+	if common.IsManageableFile(rpmsavePath) {
+		err := common.MoveFile(targetPath, rpmnewPath)
 		if err != nil {
 			return "", "", err
 		}
-		err = common.MoveFile(dpkgOldPath, targetPath)
+		err = common.MoveFile(rpmsavePath, targetPath)
 		if err != nil {
 			return "", "", err
 		}
-		return dpkgDistPath, fmt.Sprintf("%s (with .dpkg-old)", targetPath), nil
+		return rpmnewPath, fmt.Sprintf("%s (with .rpmsave)", targetPath), nil
 	}
 
-	if common.IsManageableFile(dpkgDistPath) {
-		return dpkgDistPath, dpkgDistPath, nil
+	if common.IsManageableFile(rpmnewPath) {
+		return rpmnewPath, rpmnewPath, nil
 	}
 	return "", "", nil
 }
 
-func (p dpkgImpl) AdditionalCleanupTargets(targetPath string) []string {
-	//not used by dpkg
+func (p pmRPM) AdditionalCleanupTargets(targetPath string) []string {
+	//not used by RPM
 	return []string{}
 }

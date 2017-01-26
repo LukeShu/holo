@@ -192,7 +192,7 @@ func (entity *Entity) GetCurrent() (common.FileBuffer, error) {
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
 func (entity *Entity) GetNewBase() (path string, buf common.FileBuffer, err error) {
-	realPath, path, err := platform.Implementation().FindUpdatedTargetBase(entity.PathIn(common.TargetDirectory()))
+	realPath, path, err := platform.GetPackageManager().FindUpdatedTargetBase(entity.PathIn(common.TargetDirectory()))
 	if err != nil {
 		return
 	}

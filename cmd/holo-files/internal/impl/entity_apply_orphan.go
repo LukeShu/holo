@@ -62,7 +62,7 @@ func (entity *Entity) applyOrphan() []error {
 		//if the package management left behind additional cleanup targets
 		//(most likely a backup of our custom configuration), we can delete
 		//these too
-		cleanupTargets := platform.Implementation().AdditionalCleanupTargets(current.Path)
+		cleanupTargets := platform.GetPackageManager().AdditionalCleanupTargets(current.Path)
 		for _, path := range cleanupTargets {
 			otherFile, err := common.NewFileBuffer(path)
 			if err != nil {
@@ -79,7 +79,7 @@ func (entity *Entity) applyOrphan() []error {
 	} else { // restore
 		//target is still there - restore the target base, *but* before that,
 		//check if there is an updated target base
-		updatedTBPath, reportedTBPath, err := platform.Implementation().FindUpdatedTargetBase(current.Path)
+		updatedTBPath, reportedTBPath, err := platform.GetPackageManager().FindUpdatedTargetBase(current.Path)
 		appendError(err)
 		if updatedTBPath != "" {
 			fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, current.Path)

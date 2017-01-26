@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2015 Stefan Majewsky <majewsky@gmx.net>
+* Copyright 2017 Stefan Majewsky <majewsky@gmx.net>
 *
 * This file is part of Holo.
 *
@@ -20,14 +20,20 @@
 
 package platform
 
-//genericImpl provides the platform.Impl for unrecognized Linux distributions
-//or generic unit tests.
-type genericImpl struct{}
+import "github.com/holocm/holo/cmd/holo-files/internal/common"
 
-func (p genericImpl) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+// pmAlpine provides the platform.PackageManager for Alpine Linux and
+// derivatives.
+type pmAlpine struct{}
+
+func (p pmAlpine) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+	apknewPath := targetPath + ".apk-new"
+	if common.IsManageableFile(apknewPath) {
+		return apknewPath, apknewPath, nil
+	}
 	return "", "", nil
 }
 
-func (p genericImpl) AdditionalCleanupTargets(targetPath string) []string {
+func (p pmAlpine) AdditionalCleanupTargets(targetPath string) (ret []string) {
 	return nil
 }

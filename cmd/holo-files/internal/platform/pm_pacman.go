@@ -29,10 +29,11 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/common"
 )
 
-//archImpl provides the platform.Impl for Arch Linux and derivatives.
-type archImpl struct{}
+// pmPacman provides the platform.PackageManager for
+// Pacman/libALPM-based distributions (Arch Linux and derivatives).
+type pmPacman struct{}
 
-func (p archImpl) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
+func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
 	pacnewPath := targetPath + ".pacnew"
 	if common.IsManageableFile(pacnewPath) {
 		return pacnewPath, pacnewPath, nil
@@ -40,7 +41,7 @@ func (p archImpl) FindUpdatedTargetBase(targetPath string) (actualPath, reported
 	return "", "", nil
 }
 
-func (p archImpl) AdditionalCleanupTargets(targetPath string) (ret []string) {
+func (p pmPacman) AdditionalCleanupTargets(targetPath string) (ret []string) {
 	pacsavePath := targetPath + ".pacsave"
 	if common.IsManageableFile(pacsavePath) {
 		ret = append(ret, pacsavePath)
