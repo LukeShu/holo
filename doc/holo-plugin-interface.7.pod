@@ -77,15 +77,16 @@ that they support the specified version for all other operations.
 
 Plugins MUST recognize the environment variable C<$HOLO_ROOT_DIR>: if this
 variable exists and is set to a value other than F</>, then plugins SHALL assume
-that Holo is running in test mode. The variable holds the path to a directory
-resembling a normal root partition (at least the parts needed for the test
-scenario).
+that Holo is running on some form of chroot environment, possibly in test
+mode. The variable holds the path to a directory resembling a normal root
+partition (at least the parts needed for the test scenario).
 
-In test mode, plugins SHOULD NOT talk to system-level daemons.  In test mode,
-plugins SHOULD NOT write files outside the C<$HOLO_ROOT_DIR>; with the exception
-of C<$HOLO_CACHE_DIR> (defined below), which may or may not be inside of
-C<$HOLO_ROOT_DIR>. Appropriate mock implementations SHALL be used
-instead. Modifying files below C<$HOLO_ROOT_DIR> is allowed.
+When operating on a chroot filesystem, plugins SHOULD NOT talk to system-level
+daemons. When operating on a chroot filesystem, plugins SHOULD NOT write files
+outside the C<$HOLO_ROOT_DIR>; with the exception of C<$HOLO_CACHE_DIR> (defined
+below), which may or may not be inside of C<$HOLO_ROOT_DIR>. Appropriate mock
+implementations SHALL be used instead. Modifying files below C<$HOLO_ROOT_DIR>
+is allowed.
 
 =item C<$HOLO_RESOURCE_DIR> (default: F<$HOLO_ROOT_DIR/usr/share/holo/$PLUGIN_ID>)
 
