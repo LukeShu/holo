@@ -6,9 +6,9 @@ holorc, holorc.d - configuration file for L<holo(8)>
 
 =head1 SYNOPSIS
 
-    /etc/holorc
+    $HOLO_ROOT_DIR/etc/holorc
 
-    /etc/holorc.d/*
+    $HOLO_ROOT_DIR/etc/holorc.d/*
 
 =head1 DESCRIPTION
 
@@ -37,12 +37,12 @@ for the plugin:
 Unless C<$PLUGIN_BINARY> is explicitly specified, this is plugin
 executable is installed at.
 
-=item F</usr/share/holo/$PLUGIN_ID/>
+=item F<$HOLO_ROOT_DIR/usr/share/holo/$PLUGIN_ID/>
 
 Configuration packages install resources for this plugin below this
 directory.
 
-=item F</var/lib/holo/$PLUGIN_ID/>
+=item F<$HOLO_ROOT_DIR/var/lib/holo/$PLUGIN_ID/>
 
 The plugin stores its persistent state at in the directory.
 

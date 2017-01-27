@@ -32,7 +32,9 @@ but useful to control the ordering of resource files.
 
 Each target file that has such resource files is an B<entity> within Holo. Its entity
 ID is C<file:$target> where C<$target> is the absolute path to the target
-file.
+file.  If C<$HOLO_ROOT_DIR> is set, then C<$target> absolute within the chroot
+pointed to by it; if C<HOLO_ROOT_DIR=/mychroot>, then the file at
+F</mychroot/etc/fstab> is C<file:/etc/fstab>.
 
 =head2 Application strategy
 
@@ -134,9 +136,10 @@ default configuration, future updates to the default configuration will
 automatically be picked up, as long as C<holo apply> is run after the system update.
 
 When detecting these files, to know which suffixes to look for, holo-files
-inspects C<ID> and C<ID_LIKE> in L<os-release(5)> to determine which family the
-operating system belongs to, and thus which package manager is used.  It
-currently recognizes C<alpine>, C<arch>, C<debian>, C<fedora> and C<suse>.
+inspects C<ID> and C<ID_LIKE> in F<$HOLO_ROOT_DIR/etc/os-release> or
+F<$HOLO_ROOT_DIR/usr/lib/os-release> (see L<os-release(5)>) to determine which
+family the operating system belongs to, and thus which package manager is used.
+It currently recognizes C<alpine>, C<arch>, C<debian>, C<fedora> and C<suse>.
 
 =head2 Handling package removal
 

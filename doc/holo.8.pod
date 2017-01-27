@@ -124,9 +124,17 @@ Print out Holo's version string including the release name.
 
 =over 4
 
+=item C<$HOLO_ROOT_DIR> (default: F</>)
+
+Holo can be instructed to operate on a directory other than the root directory.
+Some plugins may need to talk to system daemons to operate fully, but they
+should restrain from doing so if this variable is present and set to a value
+other than F</>.
+
 =item C<$TMPDIR> (default: F</tmp>)
 
-Where to place temporary files.
+Where to place temporary files; this does not have to be below
+C<$HOLO_ROOT_DIR>.
 
 =back
 
@@ -134,11 +142,11 @@ Where to place temporary files.
 
 =over 4
 
-=item F</etc/holorc> (see L<holorc(5)>)
+=item F<$HOLO_ROOT_DIR/etc/holorc> (see L<holorc(5)>)
 
-=item F</etc/holorc.d/*> (see L<holorc(5)>)
+=item F<$HOLO_ROOT_DIR/etc/holorc.d/*> (see L<holorc(5)>)
 
-=item F</run/holo.pid>
+=item F<$HOLO_ROOT_DIR/run/holo.pid>
 
 =back
 
@@ -148,9 +156,9 @@ For each plugin:
 
 =item F</usr/lib/holo/holo-$PLUGIN_ID> (can be overridden in L<holorc(5)>)
 
-=item F</usr/share/holo/$PLUGIN_ID/> (must exist)
+=item F<$HOLO_ROOT_DIR/usr/share/holo/$PLUGIN_ID/> (must exist)
 
-=item F</var/lib/holo/$PLUGIN_ID/> (will be created if does not exist)
+=item F<$HOLO_ROOT_DIR/var/lib/holo/$PLUGIN_ID/> (will be created if does not exist)
 
 =back
 
