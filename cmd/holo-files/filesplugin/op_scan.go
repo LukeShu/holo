@@ -27,8 +27,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/holocm/holo/cmd/holo-files/filesplugin/fileutil"
 	"github.com/holocm/holo/lib/holo"
-	"github.com/holocm/holo/plugins/filesplugin/fileutil"
 )
 
 // HoloScan returns a slice of all the FilesEntity entities.  The

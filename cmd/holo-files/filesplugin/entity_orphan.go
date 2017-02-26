@@ -26,7 +26,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/holocm/holo/plugins/filesplugin/fileutil"
+	"github.com/holocm/holo/cmd/holo-files/filesplugin/fileutil"
 )
 
 // scanOrphanedTargetBase locates a target file for a given orphaned

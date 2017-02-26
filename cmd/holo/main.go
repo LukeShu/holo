@@ -25,9 +25,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/holocm/holo/cmd/holo/externalplugin"
 	"github.com/holocm/holo/cmd/holo/impl"
 	"github.com/holocm/holo/lib/holo"
-	"github.com/holocm/holo/plugins/externalplugin"
 )
 
 var version string

@@ -27,8 +27,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/holocm/holo/cmd/holo-files/filesplugin/fileutil"
 	"github.com/holocm/holo/lib/holo"
-	"github.com/holocm/holo/plugins/filesplugin/fileutil"
 )
 
 // Apply performs the complete application algorithm for the given

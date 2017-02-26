@@ -24,8 +24,8 @@ package main
 import (
 	"os"
 
+	"github.com/holocm/holo/cmd/holo-files/filesplugin"
 	"github.com/holocm/holo/lib/holoplugin"
-	"github.com/holocm/holo/plugins/filesplugin"
 )
 
 func Main() int {

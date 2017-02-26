@@ -28,7 +28,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/holocm/holo/plugins/filesplugin/fileutil"
+	"github.com/holocm/holo/cmd/holo-files/filesplugin/fileutil"
 )
 
 func (repoFile RepoFile) ApplyTo(buf fileutil.FileBuffer, stdout, stderr io.Writer) (out fileutil.FileBuffer, err error) {

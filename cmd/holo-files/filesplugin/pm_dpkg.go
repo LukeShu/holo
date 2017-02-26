@@ -21,7 +21,7 @@
 package filesplugin
 
 import (
-	"github.com/holocm/holo/plugins/filesplugin/fileutil"
+	"github.com/holocm/holo/cmd/holo-files/filesplugin/fileutil"
 )
 
 // pmDPKG provides the PackageManager for dpkg-based distributions
