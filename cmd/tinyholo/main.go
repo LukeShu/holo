@@ -25,10 +25,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/holocm/holo/cmd/holo-files/filesplugin"
+	"github.com/holocm/holo/cmd/holo/externalplugin"
 	"github.com/holocm/holo/cmd/holo/internal"
 	"github.com/holocm/holo/lib/holo"
-	"github.com/holocm/holo/plugins/externalplugin"
-	"github.com/holocm/holo/plugins/filesplugin"
 )
 
 func Main() int {
