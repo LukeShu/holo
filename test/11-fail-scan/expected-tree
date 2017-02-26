@@ -1,0 +1,15 @@
+>> ./etc/holorc = regular
+plugin files=source/usr/lib/holo/holo-files
+>> ./etc/os-release = regular
+ID=unittest
+>> ./run = dir
+>> ./tmp = dir
+>> ./usr/lib/holo/holo-files = regular
+#!/bin/sh
+if [ "$1" = scan ]; then
+	exit 1
+fi
+exec ../../build/holo-files.test "$@"
+>> ./usr/share/holo/files = dir
+>> ./var/lib/holo/files/base = dir
+>> ./var/lib/holo/files/provisioned = dir

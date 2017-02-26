@@ -17,6 +17,8 @@ nnn
 mmm
 mmm
 ooo
+>> ./etc/os-release = regular
+ID=unittest
 >> ./etc/plain-and-plain.conf = regular
 ccc
 ccc
@@ -29,6 +31,8 @@ hhh
 ggg
 ggg
 iii
+>> ./run = dir
+>> ./tmp = dir
 >> ./usr/share/holo/files/01-first/etc/link-and-script.conf = symlink
 contents1
 >> ./usr/share/holo/files/01-first/etc/link-through-scripts.conf.holoscript = regular

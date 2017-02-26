@@ -1,11 +1,15 @@
 >> ./etc/holorc = symlink
 ../../../holorc
+>> ./etc/os-release = regular
+ID=unittest
 >> ./etc/repofile-deleted.conf = regular
 eee
 eee
 >> ./etc/still-existing.conf = regular
 bbb
 bbb
+>> ./run = dir
+>> ./tmp = dir
 >> ./usr/share/holo/files/01-first/etc/still-existing.conf = regular
 bbb
 bbb

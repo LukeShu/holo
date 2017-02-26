@@ -1,0 +1,9 @@
+>> ./etc/holorc = symlink
+../../../holorc
+>> ./etc/os-release = regular
+ID=unittest
+>> ./run = dir
+>> ./tmp = dir
+>> ./usr/share/holo/files = dir
+>> ./var/lib/holo/files/base = dir
+>> ./var/lib/holo/files/provisioned = dir

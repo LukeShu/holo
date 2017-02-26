@@ -1,5 +1,7 @@
 >> ./etc/holorc = symlink
 ../../../holorc
+>> ./etc/os-release = regular
+ID=fedora
 >> ./etc/repofile-deleted-with-rpmnew.conf = regular
 ggg
 hhh
@@ -14,6 +16,8 @@ e
 f
 >> ./etc/targetfile-with-rpmsave.conf = regular
 bbb
+>> ./run = dir
+>> ./tmp = dir
 >> ./usr/share/holo/files/01-first/etc/targetfile-with-rpmnew.conf.holoscript = symlink
 /usr/bin/sort
 >> ./usr/share/holo/files/01-first/etc/targetfile-with-rpmsave.conf.holoscript = symlink

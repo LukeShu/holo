@@ -4,6 +4,8 @@
 ddd
 >> ./etc/link-over-plain.conf = symlink
 ccc
+>> ./etc/os-release = regular
+ID=unittest
 >> ./etc/plain-over-link.conf = regular
 bbb
 bbb
@@ -11,6 +13,8 @@ bbb
 aaa
 aaa
 >> ./etc/stock-file-is-directory.conf/.keep = regular
+>> ./run = dir
+>> ./tmp = dir
 >> ./usr/share/holo/files/01-normal/etc/link-over-link.conf = symlink
 ddd
 >> ./usr/share/holo/files/01-normal/etc/link-over-plain.conf = symlink

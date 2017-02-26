@@ -1,5 +1,7 @@
 >> ./etc/holorc = symlink
 ../../../holorc
+>> ./etc/os-release = regular
+ID=debian
 >> ./etc/repofile-deleted-with-dpkg-dist.conf = regular
 ggg
 hhh
@@ -14,6 +16,8 @@ e
 f
 >> ./etc/targetfile-with-dpkg-old.conf = regular
 bbb
+>> ./run = dir
+>> ./tmp = dir
 >> ./usr/share/holo/files/01-first/etc/targetfile-with-dpkg-dist.conf.holoscript = symlink
 /usr/bin/sort
 >> ./usr/share/holo/files/01-first/etc/targetfile-with-dpkg-old.conf.holoscript = symlink

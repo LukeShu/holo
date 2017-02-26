@@ -1,7 +1,8 @@
 
-Working on file:target/etc/requireforce.conf
+Working on file:/etc/requireforce.conf
   store at target/var/lib/holo/files/base/etc/requireforce.conf
      apply target/usr/share/holo/files/01-first/etc/requireforce.conf
 
 !! Entity has been deleted by user (use --force to restore)
 
+exit status 0

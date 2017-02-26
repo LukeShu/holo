@@ -3,9 +3,13 @@
 >> ./etc/normal.conf = regular
 aaa
 bbb
+>> ./etc/os-release = regular
+ID=unittest
 >> ./etc/requireforce.conf = regular
 ccc
 ddd
+>> ./run = dir
+>> ./tmp = dir
 >> ./usr/share/holo/files/01-first/etc/normal.conf = regular
 aaa
 bbb
