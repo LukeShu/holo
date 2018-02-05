@@ -36,23 +36,28 @@ import (
 
 // PackageManager provides integration points with a distribution's toolchain.
 type PackageManager interface {
-	//FindUpdatedTargetBase is called as part of the resource application
-	//algorithm. If the system package manager updates a file which has been
-	//modified by Holo, it will usually place the new stock configuration next
-	//to the targetPath (usually with a special suffix). If such a file exists,
-	//this method must return its name, so that Holo can pick it up and use it
-	//as a new base configuration.
+	// FindUpdatedTargetBase is called as part of the resource
+	// application algorithm. If the system package manager
+	// updates a file which has been modified by Holo, it will
+	// usually place the new stock configuration next to the
+	// targetPath (usually with a special suffix). If such a file
+	// exists, this method must return its name, so that Holo can
+	// pick it up and use it as a new base configuration.
 	//
-	//The reportedPath is usually the same as the actualPath, but some
-	//implementations have to move files around, in which case the reportedPath
-	//is the original path to the updated target base, and the actualPath is
-	//where Holo will find the file.
+	// The reportedPath is usually the same as the actualPath, but
+	// some implementations have to move files around, in which
+	// case the reportedPath is the original path to the updated
+	// target base, and the actualPath is where Holo will find the
+	// file.
 	FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error)
-	//AdditionalCleanupTargets is called as part of the orphan handling. When
-	//an application package is removed, but one of its configuration files has
-	//been modified by Holo, the system package manager will usually retain a
-	//copy next to the targetPath (usually with a special suffix). If such a
-	//file exists, this method must return its name, for Holo to clean it up.
+
+	// AdditionalCleanupTargets is called as part of the orphan
+	// handling. When an application package is removed, but one
+	// of its configuration files has been modified by Holo, the
+	// system package manager will usually retain a copy next to
+	// the targetPath (usually with a special suffix). If such a
+	// file exists, this method must return its name, for Holo to
+	// clean it up.
 	AdditionalCleanupTargets(targetPath string) []string
 }
 

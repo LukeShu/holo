@@ -31,10 +31,10 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/platform"
 )
 
-//applyNonOrphan performs the complete application algorithm for the given Entity.
-//This includes taking a copy of the base if necessary, applying all
-//resources, and saving the result in the target path with the correct
-//file metadata.
+// applyNonOrphan performs the complete application algorithm for the
+// given Entity.  This includes taking a copy of the base if
+// necessary, applying all resources, and saving the result in the
+// target path with the correct file metadata.
 func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error) {
 	//step 1: check if a system update installed a new version of the stock
 	//configuration

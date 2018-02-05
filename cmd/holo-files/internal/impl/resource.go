@@ -89,8 +89,8 @@ func NewResource(path string) Resource {
 	}
 }
 
-//Resources holds a slice of Resource instances, and implements some methods
-//to satisfy the sort.Interface interface.
+// Resources holds a slice of Resource instances, and implements some
+// methods to satisfy the sort.Interface interface.
 type Resources []Resource
 
 func (f Resources) Len() int           { return len(f) }

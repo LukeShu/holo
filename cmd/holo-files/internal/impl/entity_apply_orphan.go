@@ -28,9 +28,9 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/platform"
 )
 
-//scanOrphan locates an entity for a given orphaned entity
-//and assesses the situation. This logic is grouped in one function because
-//it's used by both `holo scan` and `holo apply`.
+// scanOrphan locates an entity for a given orphaned entity and
+// assesses the situation. This logic is grouped in one function
+// because it's used by both `holo scan` and `holo apply`.
 func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
 	targetPath = entity.PathIn(common.TargetDirectory())
 	if common.IsManageableFile(targetPath) {
@@ -39,7 +39,7 @@ func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
 	return targetPath, "delete", "target was deleted"
 }
 
-//applyOrphan cleans up an orphaned entity.
+// applyOrphan cleans up an orphaned entity.
 func (entity *Entity) applyOrphan() []error {
 	var errs []error
 	appendError := func(err error) {

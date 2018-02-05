@@ -35,8 +35,8 @@ var (
 	ErrExist         = errors.New("target exists and is not a manageable file")
 )
 
-//FileBuffer represents a file, loaded into memory. It is used in holo.Apply() as
-//an intermediary product of application steps.
+// FileBuffer represents a file, loaded into memory. It is used in
+// holo.Apply() as an intermediary product of application steps.
 type FileBuffer struct {
 	Path     string
 	Mode     os.FileMode
@@ -47,8 +47,8 @@ type FileBuffer struct {
 	Manageable bool
 }
 
-//NewFileBuffer creates a FileBuffer object by reading the manageable file at
-//the given path.
+// NewFileBuffer creates a FileBuffer object by reading the manageable
+// file at the given path.
 func NewFileBuffer(path string) (FileBuffer, error) {
 	return newFileBuffer(path, false)
 }

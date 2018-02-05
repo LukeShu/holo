@@ -29,7 +29,7 @@ import (
 	"github.com/holocm/holo/cmd/holo-files/internal/common"
 )
 
-//Scan returns a slice of all the Entities.
+// Scan returns a slice of all the Entities.
 func Scan() []*Entity {
 	entities := make(map[string]*Entity)
 	//walk over the resource directory to find resources (and thus the corresponding entities)
