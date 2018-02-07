@@ -20,7 +20,7 @@
 
 //Package platform implements integration points with the platform that Holo is
 //running (most notably the package manager).
-package platform
+package filesplugin
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // PackageManager provides integration points with a distribution's toolchain.
@@ -92,10 +92,10 @@ func GetPackageManager() PackageManager {
 // and ID_LIKE= fields of os-release(5).
 func getOsRelease() map[string]bool {
 	//read /etc/os-release, fall back to /usr/lib/os-release if not available
-	bytes, err := ioutil.ReadFile(filepath.Join(common.TargetDirectory(), "etc/os-release"))
+	bytes, err := ioutil.ReadFile(filepath.Join(fileutil.TargetDirectory(), "etc/os-release"))
 	if err != nil {
 		if os.IsNotExist(err) {
-			bytes, err = ioutil.ReadFile(filepath.Join(common.TargetDirectory(), "usr/lib/os-release"))
+			bytes, err = ioutil.ReadFile(filepath.Join(fileutil.TargetDirectory(), "usr/lib/os-release"))
 		}
 	}
 	if err != nil {

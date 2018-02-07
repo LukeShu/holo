@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"errors"
@@ -27,12 +27,12 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // Entity represents a configuration file that can be provisioned by holo-files.
 type Entity struct {
-	relPath   string // the entity path relative to the common.TargetDirectory()
+	relPath   string // the entity path relative to the fileutil.TargetDirectory()
 	resources Resources
 }
 
@@ -47,9 +47,9 @@ func NewEntity(relPath string) *Entity {
 // directory.
 //
 //    var (
-//        targetPath      = entity.pathIn(common.TargetDirectory())      // e.g. "/etc/foo.conf"
-//        basePath        = entity.pathIn(common.BaseDirectory())        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
-//        provisionedPath = entity.pathIn(common.ProvisionedDirectory()) // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
+//        targetPath      = entity.pathIn(fileutil.TargetDirectory())      // e.g. "/etc/foo.conf"
+//        basePath        = entity.pathIn(fileutil.BaseDirectory())        // e.g. "/var/lib/holo/files/base/etc/foo.conf"
+//        provisionedPath = entity.pathIn(fileutil.ProvisionedDirectory()) // e.g. "/var/lib/holo/files/provisioned/etc/foo.conf"
 //    )
 func (entity *Entity) PathIn(directory string) string {
 	return filepath.Join(directory, entity.relPath)
@@ -79,9 +79,9 @@ func (entity *Entity) PrintReport() {
 	if len(entity.resources) == 0 {
 		_, strategy, assessment := entity.scanOrphan()
 		fmt.Printf("ACTION: Scrubbing (%s)\n", assessment)
-		fmt.Printf("%s: %s\n", strategy, entity.PathIn(common.BaseDirectory()))
+		fmt.Printf("%s: %s\n", strategy, entity.PathIn(fileutil.BaseDirectory()))
 	} else {
-		fmt.Printf("store at: %s\n", entity.PathIn(common.BaseDirectory()))
+		fmt.Printf("store at: %s\n", entity.PathIn(fileutil.BaseDirectory()))
 		for _, resource := range entity.Resources() {
 			fmt.Printf("SOURCE: %s\n", resource.Path())
 			fmt.Printf("%s: %s\n", resource.ApplicationStrategy(), resource.Path())

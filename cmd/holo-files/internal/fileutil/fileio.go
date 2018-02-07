@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package common
+package fileutil
 
 //This file needs to be in an extra package to break an import cycle.
 

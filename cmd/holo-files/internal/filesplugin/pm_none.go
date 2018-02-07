@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package platform
+package filesplugin
 
 // pmNone provides the platform.PackageManager for unrecognized
 // distributions or generic unit tests.

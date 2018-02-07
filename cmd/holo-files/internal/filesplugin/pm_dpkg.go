@@ -18,12 +18,12 @@
 *
 *******************************************************************************/
 
-package platform
+package filesplugin
 
 import (
 	"fmt"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // pmDPKG provides the platform.PackageManager for dpkg-based
@@ -37,19 +37,19 @@ func (p pmDPKG) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPa
 	//if "${target}.dpkg-old" exists, move it back to $target and move the
 	//updated target base to "${target}.dpkg-dist" so that the usual application
 	//logic can continue
-	if common.IsManageableFile(dpkgOldPath) {
-		err := common.MoveFile(targetPath, dpkgDistPath)
+	if fileutil.IsManageableFile(dpkgOldPath) {
+		err := fileutil.MoveFile(targetPath, dpkgDistPath)
 		if err != nil {
 			return "", "", err
 		}
-		err = common.MoveFile(dpkgOldPath, targetPath)
+		err = fileutil.MoveFile(dpkgOldPath, targetPath)
 		if err != nil {
 			return "", "", err
 		}
 		return dpkgDistPath, fmt.Sprintf("%s (with .dpkg-old)", targetPath), nil
 	}
 
-	if common.IsManageableFile(dpkgDistPath) {
+	if fileutil.IsManageableFile(dpkgDistPath) {
 		return dpkgDistPath, dpkgDistPath, nil
 	}
 	return "", "", nil

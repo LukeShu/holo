@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package platform
+package filesplugin
 
 import (
 	"io/ioutil"
@@ -26,7 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // pmPacman provides the platform.PackageManager for
@@ -35,7 +35,7 @@ type pmPacman struct{}
 
 func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
 	pacnewPath := targetPath + ".pacnew"
-	if common.IsManageableFile(pacnewPath) {
+	if fileutil.IsManageableFile(pacnewPath) {
 		return pacnewPath, pacnewPath, nil
 	}
 	return "", "", nil
@@ -43,7 +43,7 @@ func (p pmPacman) FindUpdatedTargetBase(targetPath string) (actualPath, reported
 
 func (p pmPacman) AdditionalCleanupTargets(targetPath string) (ret []string) {
 	pacsavePath := targetPath + ".pacsave"
-	if common.IsManageableFile(pacsavePath) {
+	if fileutil.IsManageableFile(pacsavePath) {
 		ret = append(ret, pacsavePath)
 	}
 
@@ -62,7 +62,7 @@ func (p pmPacman) AdditionalCleanupTargets(targetPath string) (ret []string) {
 		if _, err := strconv.ParseUint(suffix, 10, 0); err != nil {
 			continue
 		}
-		if !common.IsManageableFileInfo(fileinfo) {
+		if !fileutil.IsManageableFileInfo(fileinfo) {
 			continue
 		}
 		ret = append(ret, filepath.Join(dir, fileinfo.Name()))

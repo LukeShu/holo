@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"os"
@@ -26,21 +26,21 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // Scan returns a slice of all the Entities.
 func Scan() []*Entity {
 	entities := make(map[string]*Entity)
 	//walk over the resource directory to find resources (and thus the corresponding entities)
-	resourceDir := common.ResourceDirectory()
+	resourceDir := fileutil.ResourceDirectory()
 	filepath.Walk(resourceDir, func(resourcePath string, resourceFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !(resourceFileInfo.Mode().IsRegular() || common.IsFileInfoASymbolicLink(resourceFileInfo)) {
+		if !(resourceFileInfo.Mode().IsRegular() || fileutil.IsFileInfoASymbolicLink(resourceFileInfo)) {
 			return nil
 		}
 		// don't consider resourceDir itself to be a resource
@@ -67,14 +67,14 @@ func Scan() []*Entity {
 	})
 
 	//walk over the base directory to find orphaned entities
-	baseDir := common.BaseDirectory()
+	baseDir := fileutil.BaseDirectory()
 	filepath.Walk(baseDir, func(basePath string, baseFileInfo os.FileInfo, err error) error {
 		//skip over unaccessible stuff
 		if err != nil {
 			return err
 		}
 		//only look at manageable files (regular files or symlinks)
-		if !(baseFileInfo.Mode().IsRegular() || common.IsFileInfoASymbolicLink(baseFileInfo)) {
+		if !(baseFileInfo.Mode().IsRegular() || fileutil.IsFileInfoASymbolicLink(baseFileInfo)) {
 			return nil
 		}
 		// don't consider baseDir itself to be a base (it

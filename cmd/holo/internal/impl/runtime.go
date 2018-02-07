@@ -23,6 +23,8 @@ package impl
 import (
 	"io/ioutil"
 	"os"
+
+	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 var cachePath string
@@ -33,7 +35,7 @@ func WithCacheDirectory(worker func() (exitCode int)) (exitCode int) {
 	var err error
 	cachePath, err = ioutil.TempDir(os.TempDir(), "holo.")
 	if err != nil {
-		Errorf(Stderr, err.Error())
+		output.Errorf(output.Stderr, err.Error())
 		return 255
 	}
 

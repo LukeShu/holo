@@ -18,7 +18,7 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // Patchfile is a Resource that is a `patch(1)` file that edits the
@@ -42,13 +42,13 @@ func (resource Patchfile) ApplicationStrategy() string { return "patch" }
 func (resource Patchfile) DiscardsPreviousBuffer() bool { return false }
 
 // ApplyTo implements the Resource interface.
-func (resource Patchfile) ApplyTo(entityBuffer common.FileBuffer) (common.FileBuffer, error) {
+func (resource Patchfile) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error) {
 	// `patch` requires that the file it's operating on be a real
 	// file (not a pipe).  So, we'll write entityBuffer to a
 	// temporary file, run `patch`, then read it back.
 
 	// We really only normally need 1 temporary file, but:
-	//  1. since common.FileBuffer.Write removes the file and then
+	//  1. since fileutil.FileBuffer.Write removes the file and then
 	//     re-creates it, that's a bit racy
 	//  2. The only way to limit patch to operating on a single
 	//     file is to name that file on the command line, but
@@ -63,7 +63,7 @@ func (resource Patchfile) ApplyTo(entityBuffer common.FileBuffer) (common.FileBu
 	// ignore those files.
 	targetDir, err := ioutil.TempDir(os.Getenv("HOLO_CACHE_DIR"), "patch-target.")
 	if err != nil {
-		return common.FileBuffer{}, err
+		return fileutil.FileBuffer{}, err
 	}
 	defer os.RemoveAll(targetDir)
 	targetPath := filepath.Join(targetDir, filepath.Base(entityBuffer.Path))
@@ -71,13 +71,13 @@ func (resource Patchfile) ApplyTo(entityBuffer common.FileBuffer) (common.FileBu
 	// Write entityBuffer to the temporary file
 	err = entityBuffer.Write(targetPath)
 	if err != nil {
-		return common.FileBuffer{}, err
+		return fileutil.FileBuffer{}, err
 	}
 
 	// Run `patch` on the temporary file
 	patchfile, err := filepath.Abs(resource.Path())
 	if err != nil {
-		return common.FileBuffer{}, err
+		return fileutil.FileBuffer{}, err
 	}
 	cmd := exec.Command("patch",
 		"-N",
@@ -88,7 +88,7 @@ func (resource Patchfile) ApplyTo(entityBuffer common.FileBuffer) (common.FileBu
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		return common.FileBuffer{}, fmt.Errorf("execution failed: %s: %s", strings.Join(cmd.Args, " "), err.Error())
+		return fileutil.FileBuffer{}, fmt.Errorf("execution failed: %s: %s", strings.Join(cmd.Args, " "), err.Error())
 	}
 
 	// Read the result back
@@ -102,9 +102,9 @@ func (resource Patchfile) ApplyTo(entityBuffer common.FileBuffer) (common.FileBu
 	//  - UID/GID (I don't know of a patch syntax that does this,
 	//    but maybe it will exist in the future)
 	//  - contents (obviously)
-	targetBuffer, err := common.NewFileBuffer(targetPath)
+	targetBuffer, err := fileutil.NewFileBuffer(targetPath)
 	if err != nil {
-		return common.FileBuffer{}, err
+		return fileutil.FileBuffer{}, err
 	}
 	targetBuffer.Path = entityBuffer.Path
 	return targetBuffer, nil

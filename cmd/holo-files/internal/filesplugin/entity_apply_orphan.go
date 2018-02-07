@@ -18,22 +18,21 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
-	"github.com/holocm/holo/cmd/holo-files/internal/platform"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // scanOrphan locates an entity for a given orphaned entity and
 // assesses the situation. This logic is grouped in one function
 // because it's used by both `holo scan` and `holo apply`.
 func (entity *Entity) scanOrphan() (targetPath, strategy, assessment string) {
-	targetPath = entity.PathIn(common.TargetDirectory())
-	if common.IsManageableFile(targetPath) {
+	targetPath = entity.PathIn(fileutil.TargetDirectory())
+	if fileutil.IsManageableFile(targetPath) {
 		return targetPath, "restore", "all repository files were deleted"
 	}
 	return targetPath, "delete", "target was deleted"
@@ -56,15 +55,15 @@ func (entity *Entity) applyOrphan() []error {
 	provisioned, err := entity.GetProvisioned()
 	appendError(err)
 
-	basePath := entity.PathIn(common.BaseDirectory())
+	basePath := entity.PathIn(fileutil.BaseDirectory())
 
 	if !current.Manageable { // delete
 		//if the package management left behind additional cleanup targets
 		//(most likely a backup of our custom configuration), we can delete
 		//these too
-		cleanupTargets := platform.GetPackageManager().AdditionalCleanupTargets(current.Path)
+		cleanupTargets := GetPackageManager().AdditionalCleanupTargets(current.Path)
 		for _, path := range cleanupTargets {
-			otherFile, err := common.NewFileBuffer(path)
+			otherFile, err := fileutil.NewFileBuffer(path)
 			if err != nil {
 				continue
 			}
@@ -79,7 +78,7 @@ func (entity *Entity) applyOrphan() []error {
 	} else { // restore
 		//target is still there - restore the target base, *but* before that,
 		//check if there is an updated target base
-		updatedTBPath, reportedTBPath, err := platform.GetPackageManager().FindUpdatedTargetBase(current.Path)
+		updatedTBPath, reportedTBPath, err := GetPackageManager().FindUpdatedTargetBase(current.Path)
 		appendError(err)
 		if updatedTBPath != "" {
 			fmt.Printf(">> found updated target base: %s -> %s", reportedTBPath, current.Path)
@@ -89,7 +88,7 @@ func (entity *Entity) applyOrphan() []error {
 		}
 
 		appendError(os.Remove(provisioned.Path))
-		appendError(common.MoveFile(basePath, current.Path))
+		appendError(fileutil.MoveFile(basePath, current.Path))
 	}
 
 	//TODO: cleanup empty directories below BaseDirectory() and ProvisionedDirectory()

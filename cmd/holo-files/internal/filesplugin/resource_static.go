@@ -19,12 +19,12 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"os"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // StaticResource is a Resource that is a plain static file that
@@ -38,10 +38,10 @@ func (resource StaticResource) ApplicationStrategy() string { return "apply" }
 func (resource StaticResource) DiscardsPreviousBuffer() bool { return true }
 
 // ApplyTo implements the Resource interface.
-func (resource StaticResource) ApplyTo(entityBuffer common.FileBuffer) (common.FileBuffer, error) {
-	resourceBuffer, err := common.NewFileBuffer(resource.Path())
+func (resource StaticResource) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error) {
+	resourceBuffer, err := fileutil.NewFileBuffer(resource.Path())
 	if err != nil {
-		return common.FileBuffer{}, err
+		return fileutil.FileBuffer{}, err
 	}
 	entityBuffer.Contents = resourceBuffer.Contents
 	entityBuffer.Mode = (entityBuffer.Mode &^ os.ModeType) | (resourceBuffer.Mode & os.ModeType)

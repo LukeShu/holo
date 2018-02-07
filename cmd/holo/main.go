@@ -25,7 +25,8 @@ import (
 	"io"
 	"os"
 
-	impl "github.com/holocm/holo/cmd/holo/internal"
+	"github.com/holocm/holo/cmd/holo/internal/impl"
+	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 //this is populated at compile-time, see Makefile
@@ -113,7 +114,7 @@ func Main() (exitCode int) {
 				return 255
 			}
 			entities = append(entities, pluginEntities...)
-			impl.Stdout.EndParagraph()
+			output.Stdout.EndParagraph()
 		}
 
 		//if there are selectors, check which entities have been selected by them
@@ -183,7 +184,7 @@ func commandApply(entities []*impl.Entity, options map[int]bool) (exitCode int) 
 		entity.Apply(withForce)
 
 		os.Stderr.Sync()
-		impl.Stdout.EndParagraph()
+		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
 
@@ -209,14 +210,14 @@ func commandScan(entities []*impl.Entity, options map[int]bool) (exitCode int) {
 
 func commandDiff(entities []*impl.Entity, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
-		output, err := entity.RenderDiff()
+		buf, err := entity.RenderDiff()
 		if err != nil {
-			impl.Errorf(impl.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
+			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.EntityID(), err.Error())
 		}
-		os.Stdout.Write(output)
+		os.Stdout.Write(buf)
 
 		os.Stderr.Sync()
-		impl.Stdout.EndParagraph()
+		output.Stdout.EndParagraph()
 		os.Stdout.Sync()
 	}
 

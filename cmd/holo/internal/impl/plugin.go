@@ -31,6 +31,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 //PluginAPIVersion is the version of holo-plugin-interface(7) implemented by this.
@@ -62,7 +64,7 @@ func NewPluginWithExecutablePath(id string, executablePath string) (*Plugin, err
 	_, err := os.Stat(executablePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			Errorf(Stderr, "%s: file not found", executablePath)
+			output.Errorf(output.Stderr, "%s: file not found", executablePath)
 			return nil, ErrPluginExecutableMissing
 		}
 		return nil, err
@@ -70,7 +72,7 @@ func NewPluginWithExecutablePath(id string, executablePath string) (*Plugin, err
 
 	//load metadata with the "info" command
 	var buf bytes.Buffer
-	err = p.Command([]string{"info"}, &buf, Stderr, nil).Run()
+	err = p.Command([]string{"info"}, &buf, output.Stderr, nil).Run()
 	if err != nil {
 		return nil, err
 	}
@@ -138,9 +140,9 @@ func (p *Plugin) Command(arguments []string, stdout io.Writer, stderr io.Writer,
 	cmd := exec.Command(p.executablePath, arguments...)
 	cmd.Stdin = nil
 	cmd.Stdout = stdout
-	cmd.Stderr = &LineColorizingWriter{Writer: stderr, Rules: []LineColorizingRule{
-		LineColorizingRule{[]byte("!! "), []byte("\x1B[1;31m")},
-		LineColorizingRule{[]byte(">> "), []byte("\x1B[1;33m")},
+	cmd.Stderr = &output.LineColorizingWriter{Writer: stderr, Rules: []output.LineColorizingRule{
+		{[]byte("!! "), []byte("\x1B[1;31m")},
+		{[]byte(">> "), []byte("\x1B[1;33m")},
 	}}
 	if msg != nil {
 		cmd.ExtraFiles = []*os.File{msg}

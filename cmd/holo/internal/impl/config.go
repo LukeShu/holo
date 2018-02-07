@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 var rootDirectory string
@@ -100,7 +102,7 @@ func readConfigLines() ([]string, error) {
 func ReadConfiguration() *Configuration {
 	lines, err := readConfigLines()
 	if err != nil {
-		Errorf(Stderr, err.Error())
+		output.Errorf(output.Stderr, err.Error())
 		return nil
 	}
 
@@ -136,15 +138,15 @@ func ReadConfiguration() *Configuration {
 					//"holo apply file:/etc/holorc" will remove them from the
 					//holorc, but to be able to run, Holo needs to be able to
 					//ignore the missing uninstalled plugin at this point
-					Warnf(Stderr, "Skipping plugin: %s", pluginID)
+					output.Warnf(output.Stderr, "Skipping plugin: %s", pluginID)
 				} else {
-					Errorf(Stderr, err.Error())
+					output.Errorf(output.Stderr, err.Error())
 					return nil
 				}
 			}
 		} else {
 			//unknown line
-			Errorf(Stderr, "cannot parse configuration: unknown command: %s", line)
+			output.Errorf(output.Stderr, "cannot parse configuration: unknown command: %s", line)
 			return nil
 		}
 	}
@@ -156,10 +158,10 @@ func ReadConfiguration() *Configuration {
 		fi, err := os.Stat(dir)
 		switch {
 		case err != nil:
-			Errorf(Stderr, "cannot open %s: %s", dir, err.Error())
+			output.Errorf(output.Stderr, "cannot open %s: %s", dir, err.Error())
 			hasError = true
 		case !fi.IsDir():
-			Errorf(Stderr, "cannot open %s: not a directory!", dir)
+			output.Errorf(output.Stderr, "cannot open %s: not a directory!", dir)
 			hasError = true
 		}
 	}
@@ -173,7 +175,7 @@ func ReadConfiguration() *Configuration {
 		for _, dir := range dirs {
 			err := os.MkdirAll(dir, 0755)
 			if err != nil {
-				Errorf(Stderr, err.Error())
+				output.Errorf(output.Stderr, err.Error())
 				hasError = true
 			}
 		}

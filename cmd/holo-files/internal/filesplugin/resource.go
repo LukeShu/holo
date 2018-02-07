@@ -19,13 +19,13 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"path/filepath"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 //Resource represents a single file in $HOLO_RESOURCE_DIR.
@@ -54,7 +54,7 @@ type Resource interface {
 
 	// ApplyTo applies this Resource to a file buffer, as part of
 	// the `holo apply` algorithm.
-	ApplyTo(entityBuffer common.FileBuffer) (common.FileBuffer, error)
+	ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error)
 }
 
 type rawResource struct {
@@ -70,7 +70,7 @@ func (resource rawResource) EntityPath() string    { return resource.entityPath 
 //NewResource creates a Resource instance when its path in the file system is
 //known.
 func NewResource(path string) Resource {
-	relPath, _ := filepath.Rel(common.ResourceDirectory(), path)
+	relPath, _ := filepath.Rel(fileutil.ResourceDirectory(), path)
 	segments := strings.SplitN(relPath, string(filepath.Separator), 2)
 	ext := filepath.Ext(segments[1])
 	raw := rawResource{

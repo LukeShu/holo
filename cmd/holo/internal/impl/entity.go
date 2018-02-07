@@ -28,6 +28,8 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+
+	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 //InfoLine represents a line in the information section of an Entity.
@@ -73,43 +75,43 @@ func (e *Entity) PrintReport(withAction bool) {
 	var lineFormat string
 	if e.actionVerb == "" || !withAction {
 		lineFormat = "%12s %s\n"
-		fmt.Fprintf(Stdout, "\x1b[1m%s\x1b[0m", e.id)
+		fmt.Fprintf(output.Stdout, "\x1b[1m%s\x1b[0m", e.id)
 	} else {
 		lineFormat = fmt.Sprintf("%%%ds %%s\n", len(e.actionVerb))
-		fmt.Fprintf(Stdout, "%s \x1b[1m%s\x1b[0m", e.actionVerb, e.id)
+		fmt.Fprintf(output.Stdout, "%s \x1b[1m%s\x1b[0m", e.actionVerb, e.id)
 	}
 	if e.actionReason == "" {
-		Stdout.Write([]byte{'\n'})
+		output.Stdout.Write([]byte{'\n'})
 	} else {
-		fmt.Fprintf(Stdout, " (%s)\n", e.actionReason)
+		fmt.Fprintf(output.Stdout, " (%s)\n", e.actionReason)
 	}
 
 	//print info lines
 	for _, line := range e.infoLines {
-		fmt.Fprintf(Stdout, lineFormat, line.attribute, line.value)
+		fmt.Fprintf(output.Stdout, lineFormat, line.attribute, line.value)
 	}
-	Stdout.EndParagraph()
+	output.Stdout.EndParagraph()
 	os.Stdout.Sync()
 }
 
 //PrintScanReport reproduces the original scan report for this Entity.
 func (e *Entity) PrintScanReport() {
-	fmt.Fprintf(Stdout, "ENTITY: %s\n", e.EntityID())
+	fmt.Fprintf(output.Stdout, "ENTITY: %s\n", e.EntityID())
 	switch {
 	case e.actionReason != "":
-		fmt.Fprintf(Stdout, "ACTION: %s (%s)\n", e.actionVerb, e.actionReason)
+		fmt.Fprintf(output.Stdout, "ACTION: %s (%s)\n", e.actionVerb, e.actionReason)
 	case e.actionVerb != "Working on":
-		fmt.Fprintf(Stdout, "ACTION: %s\n", e.actionVerb)
+		fmt.Fprintf(output.Stdout, "ACTION: %s\n", e.actionVerb)
 	}
 
 	for _, sourceFile := range e.sourceFiles {
-		fmt.Fprintf(Stdout, "SOURCE: %s\n", sourceFile)
+		fmt.Fprintf(output.Stdout, "SOURCE: %s\n", sourceFile)
 	}
 	for _, infoLine := range e.infoLines {
-		fmt.Fprintf(Stdout, "%s: %s\n", infoLine.attribute, infoLine.value)
+		fmt.Fprintf(output.Stdout, "%s: %s\n", infoLine.attribute, infoLine.value)
 	}
 
-	Stdout.EndParagraph()
+	output.Stdout.EndParagraph()
 }
 
 //Apply performs the complete application algorithm for the given Entity.
@@ -120,14 +122,14 @@ func (e *Entity) Apply(withForce bool) {
 	}
 
 	//track whether the report was already printed
-	tracker := &PrologueTracker{Printer: func() { e.PrintReport(true) }}
-	stdout := &PrologueWriter{Tracker: tracker, Writer: Stdout}
-	stderr := &PrologueWriter{Tracker: tracker, Writer: Stderr}
+	tracker := &output.PrologueTracker{Printer: func() { e.PrintReport(true) }}
+	stdout := &output.PrologueWriter{Tracker: tracker, Writer: output.Stdout}
+	stderr := &output.PrologueWriter{Tracker: tracker, Writer: output.Stderr}
 
 	//execute apply operation
 	cmdText, err := e.plugin.RunCommandWithFD3([]string{command, e.id}, stdout, stderr)
 	if err != nil {
-		Errorf(stderr, err.Error())
+		output.Errorf(stderr, err.Error())
 		return
 	}
 
@@ -142,10 +144,10 @@ func (e *Entity) Apply(withForce bool) {
 			case "not changed":
 				showReport = false
 			case "requires --force to overwrite":
-				Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
+				output.Errorf(stderr, "Entity has been modified by user (use --force to overwrite)")
 				showDiff = true
 			case "requires --force to restore":
-				Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
+				output.Errorf(stderr, "Entity has been deleted by user (use --force to restore)")
 			}
 		}
 	}
@@ -155,7 +157,7 @@ func (e *Entity) Apply(withForce bool) {
 	if showDiff {
 		diff, err := e.RenderDiff()
 		if err != nil {
-			Errorf(stderr, err.Error())
+			output.Errorf(stderr, err.Error())
 			return
 		}
 		//indent diff
@@ -164,8 +166,8 @@ func (e *Entity) Apply(withForce bool) {
 		diff = bytes.TrimSuffix(diff, indent)
 
 		tracker.Exec()
-		Stdout.EndParagraph()
-		Stdout.Write(diff)
+		output.Stdout.EndParagraph()
+		output.Stdout.Write(diff)
 	}
 }
 
@@ -174,7 +176,7 @@ func (e *Entity) Apply(withForce bool) {
 //handles symlinks and missing files gracefully. The output is always a patch
 //that can be applied to last provisioned version into the current version.
 func (e *Entity) RenderDiff() ([]byte, error) {
-	cmdText, err := e.plugin.RunCommandWithFD3([]string{"diff", e.id}, Stdout, Stderr)
+	cmdText, err := e.plugin.RunCommandWithFD3([]string{"diff", e.id}, output.Stdout, output.Stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +205,7 @@ func renderFileDiff(fromPath, toPath string) ([]byte, error) {
 	var buffer bytes.Buffer
 	cmd := exec.Command("git", "diff", "--no-index", "--", fromPathToUse, toPathToUse)
 	cmd.Stdout = &buffer
-	cmd.Stderr = Stderr
+	cmd.Stderr = output.Stderr
 
 	//error "exit code 1" is normal for different files, only exit code > 2 means trouble
 	err = cmd.Run()
@@ -236,18 +238,18 @@ func renderFileDiff(fromPath, toPath string) ([]byte, error) {
 	result = rx.ReplaceAll(result, []byte("+++ "+toPath))
 
 	//colorize diff
-	rules := []LineColorizingRule{
-		LineColorizingRule{[]byte("diff "), []byte("\x1B[1m")},
-		LineColorizingRule{[]byte("new "), []byte("\x1B[1m")},
-		LineColorizingRule{[]byte("deleted "), []byte("\x1B[1m")},
-		LineColorizingRule{[]byte("--- "), []byte("\x1B[1m")},
-		LineColorizingRule{[]byte("+++ "), []byte("\x1B[1m")},
-		LineColorizingRule{[]byte("@@ "), []byte("\x1B[36m")},
-		LineColorizingRule{[]byte("-"), []byte("\x1B[31m")},
-		LineColorizingRule{[]byte("+"), []byte("\x1B[32m")},
+	rules := []output.LineColorizingRule{
+		{[]byte("diff "), []byte("\x1B[1m")},
+		{[]byte("new "), []byte("\x1B[1m")},
+		{[]byte("deleted "), []byte("\x1B[1m")},
+		{[]byte("--- "), []byte("\x1B[1m")},
+		{[]byte("+++ "), []byte("\x1B[1m")},
+		{[]byte("@@ "), []byte("\x1B[36m")},
+		{[]byte("-"), []byte("\x1B[31m")},
+		{[]byte("+"), []byte("\x1B[32m")},
 	}
 
-	return ColorizeLines(result, rules), nil
+	return output.ColorizeLines(result, rules), nil
 }
 
 func checkFile(path string) (pathToUse string, returnError error) {

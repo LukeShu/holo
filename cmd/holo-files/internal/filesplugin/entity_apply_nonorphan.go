@@ -19,7 +19,7 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"errors"
@@ -27,8 +27,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
-	"github.com/holocm/holo/cmd/holo-files/internal/platform"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // applyNonOrphan performs the complete application algorithm for the
@@ -174,37 +173,37 @@ func (entity *Entity) applyNonOrphan(withForce bool) (skipReport bool, err error
 
 //GetBase return the package manager-supplied base version of the
 //entity, as recorded the last time it was provisioned.
-func (entity *Entity) GetBase() (common.FileBuffer, error) {
-	return common.NewFileBuffer(entity.PathIn(common.BaseDirectory()))
+func (entity *Entity) GetBase() (fileutil.FileBuffer, error) {
+	return fileutil.NewFileBuffer(entity.PathIn(fileutil.BaseDirectory()))
 }
 
 //GetProvisioned returns the recorded last-provisioned state of the
 //entity.
-func (entity *Entity) GetProvisioned() (common.FileBuffer, error) {
-	return common.NewFileBuffer(entity.PathIn(common.ProvisionedDirectory()))
+func (entity *Entity) GetProvisioned() (fileutil.FileBuffer, error) {
+	return fileutil.NewFileBuffer(entity.PathIn(fileutil.ProvisionedDirectory()))
 }
 
 //GetCurrent returns the current version of the entity.
-func (entity *Entity) GetCurrent() (common.FileBuffer, error) {
-	return common.NewFileBuffer(entity.PathIn(common.TargetDirectory()))
+func (entity *Entity) GetCurrent() (fileutil.FileBuffer, error) {
+	return fileutil.NewFileBuffer(entity.PathIn(fileutil.TargetDirectory()))
 }
 
 //GetNewBase returns the base version of the entity, if it has been
 //updated by the package manager since last applied.
-func (entity *Entity) GetNewBase() (path string, buf common.FileBuffer, err error) {
-	realPath, path, err := platform.GetPackageManager().FindUpdatedTargetBase(entity.PathIn(common.TargetDirectory()))
+func (entity *Entity) GetNewBase() (path string, buf fileutil.FileBuffer, err error) {
+	realPath, path, err := GetPackageManager().FindUpdatedTargetBase(entity.PathIn(fileutil.TargetDirectory()))
 	if err != nil {
 		return
 	}
 	if realPath != "" {
-		buf, err = common.NewFileBuffer(realPath)
+		buf, err = fileutil.NewFileBuffer(realPath)
 		return
 	}
 	return
 }
 
 //GetDesired applies all the resources for this Entity onto the base.
-func (entity *Entity) GetDesired(base common.FileBuffer) (common.FileBuffer, error) {
+func (entity *Entity) GetDesired(base fileutil.FileBuffer) (fileutil.FileBuffer, error) {
 	resources := entity.Resources()
 
 	// Optimization: check if we can skip any application steps
@@ -219,14 +218,14 @@ func (entity *Entity) GetDesired(base common.FileBuffer) (common.FileBuffer, err
 	//load the base into a buffer as the start for the application
 	//algorithm
 	buffer := base
-	buffer.Path = entity.PathIn(common.TargetDirectory())
+	buffer.Path = entity.PathIn(fileutil.TargetDirectory())
 
 	//apply all the applicable resources in order
 	var err error
 	for _, resource := range resources {
 		buffer, err = resource.ApplyTo(buffer)
 		if err != nil {
-			return common.FileBuffer{}, err
+			return fileutil.FileBuffer{}, err
 		}
 	}
 

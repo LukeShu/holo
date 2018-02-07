@@ -19,7 +19,7 @@
 *
 *******************************************************************************/
 
-package impl
+package filesplugin
 
 import (
 	"bytes"
@@ -28,7 +28,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // Holoscript is a Resource that is a script that edits the current
@@ -42,11 +42,11 @@ func (resource Holoscript) ApplicationStrategy() string { return "passthru" }
 func (resource Holoscript) DiscardsPreviousBuffer() bool { return false }
 
 // ApplyTo implements the Resource interface.
-func (resource Holoscript) ApplyTo(entityBuffer common.FileBuffer) (common.FileBuffer, error) {
+func (resource Holoscript) ApplyTo(entityBuffer fileutil.FileBuffer) (fileutil.FileBuffer, error) {
 	//application of a holoscript requires file contents
 	entityBuffer, err := entityBuffer.ResolveSymlink()
 	if err != nil {
-		return common.FileBuffer{}, err
+		return fileutil.FileBuffer{}, err
 	}
 
 	//run command, fetch result file into buffer (not into the entity
@@ -58,7 +58,7 @@ func (resource Holoscript) ApplyTo(entityBuffer common.FileBuffer) (common.FileB
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		return common.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", resource.Path(), err.Error())
+		return fileutil.FileBuffer{}, fmt.Errorf("execution of %s failed: %s", resource.Path(), err.Error())
 	}
 
 	//result is the stdout of the script

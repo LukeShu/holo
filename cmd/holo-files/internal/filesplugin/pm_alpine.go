@@ -18,9 +18,9 @@
 *
 *******************************************************************************/
 
-package platform
+package filesplugin
 
-import "github.com/holocm/holo/cmd/holo-files/internal/common"
+import "github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 
 // pmAlpine provides the platform.PackageManager for Alpine Linux and
 // derivatives.
@@ -28,7 +28,7 @@ type pmAlpine struct{}
 
 func (p pmAlpine) FindUpdatedTargetBase(targetPath string) (actualPath, reportedPath string, err error) {
 	apknewPath := targetPath + ".apk-new"
-	if common.IsManageableFile(apknewPath) {
+	if fileutil.IsManageableFile(apknewPath) {
 		return apknewPath, apknewPath, nil
 	}
 	return "", "", nil

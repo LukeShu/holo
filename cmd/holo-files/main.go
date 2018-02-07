@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/holocm/holo/cmd/holo-files/internal/common"
-	"github.com/holocm/holo/cmd/holo-files/internal/impl"
+	"github.com/holocm/holo/cmd/holo-files/internal/filesplugin"
+	"github.com/holocm/holo/cmd/holo-files/internal/fileutil"
 )
 
 // Main is the main entry point, but returns the exit code rather than
@@ -39,7 +39,7 @@ func Main() (exitCode int) {
 	}
 
 	//scan for entities
-	entities := impl.Scan()
+	entities := filesplugin.Scan()
 	if entities == nil {
 		//some fatal error occurred - it was already reported, so just exit
 		return 1
@@ -55,7 +55,7 @@ func Main() (exitCode int) {
 
 	//all other actions require an entity selection
 	entityID := os.Args[2]
-	var selectedEntity *impl.Entity
+	var selectedEntity *filesplugin.Entity
 	for _, entity := range entities {
 		if entity.EntityID() == entityID {
 			selectedEntity = entity
@@ -74,8 +74,8 @@ func Main() (exitCode int) {
 		applyEntity(selectedEntity, true)
 	case "diff":
 		output := fmt.Sprintf("%s\000%s\000",
-			selectedEntity.PathIn(common.ProvisionedDirectory()),
-			selectedEntity.PathIn(common.TargetDirectory()),
+			selectedEntity.PathIn(fileutil.ProvisionedDirectory()),
+			selectedEntity.PathIn(fileutil.TargetDirectory()),
 		)
 		_, err := os.NewFile(3, "file descriptor 3").Write([]byte(output))
 		if err != nil {
@@ -86,7 +86,7 @@ func Main() (exitCode int) {
 	return 0
 }
 
-func applyEntity(entity *impl.Entity, withForce bool) {
+func applyEntity(entity *filesplugin.Entity, withForce bool) {
 	skipReport, needForceToOverwrite, needForceToRestore := entity.Apply(withForce)
 
 	if skipReport {
