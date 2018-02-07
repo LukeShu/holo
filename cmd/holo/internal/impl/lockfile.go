@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/holocm/holo/cmd/holo/internal/output"
 )
@@ -45,13 +44,9 @@ func AcquireLockfile() bool {
 	lockFile, err = os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		output.Errorf(output.Stderr, "Cannot create lock file %s: %s", lockPath, err.Error())
-		//is this the "file exists" error that indicates another running instance?
-		suberr := err.(*os.PathError).Err
-		if errno, ok := suberr.(syscall.Errno); ok {
-			if errno == syscall.EEXIST {
-				fmt.Fprintln(output.Stderr, "This usually means that another instance of Holo is currently running.")
-				fmt.Fprintln(output.Stderr, "If not, you can try to delete the lock file manually.")
-			}
+		if os.IsExist(err) {
+			fmt.Fprintln(output.Stderr, "This usually means that another instance of Holo is currently running.")
+			fmt.Fprintln(output.Stderr, "If not, you can try to delete the lock file manually.")
 		}
 		return false
 	}
