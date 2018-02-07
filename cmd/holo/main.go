@@ -33,12 +33,6 @@ import (
 //this is populated at compile-time, see Makefile
 var version = "unknown"
 
-const (
-	optionApplyForce = iota
-	optionScanShort
-	optionScanPorcelain
-)
-
 // Main is the main entry point, but returns the exit code rather than
 // calling os.Exit().  This distinction is useful for monobinary and
 // testing purposes.
@@ -133,56 +127,4 @@ func commandHelp(w io.Writer) {
 	fmt.Fprintf(w, "   or: %s version\n", program)
 	fmt.Fprintf(w, "   or: %s help\n", program)
 	fmt.Fprintf(w, "\nSee `man 8 holo` for details.\n")
-}
-
-func commandApply(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
-	//ensure that we're the only Holo instance
-	if !impl.AcquireLockfile() {
-		return 255
-	}
-	defer impl.ReleaseLockfile()
-
-	withForce := options[optionApplyForce]
-	for _, entity := range entities {
-		entity.Apply(withForce)
-
-		os.Stderr.Sync()
-		output.Stdout.EndParagraph()
-		os.Stdout.Sync()
-	}
-
-	return 0
-}
-
-func commandScan(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
-	isPorcelain := options[optionScanPorcelain]
-	isShort := options[optionScanShort]
-	for _, entity := range entities {
-		switch {
-		case isPorcelain:
-			entity.PrintScanReport()
-		case isShort:
-			fmt.Println(entity.Entity.EntityID())
-		default:
-			entity.PrintReport(false)
-		}
-	}
-
-	return 0
-}
-
-func commandDiff(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
-	for _, entity := range entities {
-		buf, err := entity.RenderDiff()
-		if err != nil {
-			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.Entity.EntityID(), err.Error())
-		}
-		os.Stdout.Write(buf)
-
-		os.Stderr.Sync()
-		output.Stdout.EndParagraph()
-		os.Stdout.Sync()
-	}
-
-	return 0
 }
