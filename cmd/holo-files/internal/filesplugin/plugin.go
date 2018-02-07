@@ -57,24 +57,31 @@ func (p FilesPlugin) HoloScan(stderr io.Writer) ([]holo.Entity, error) {
 
 // HoloApply provisions the given entity.
 func (p FilesPlugin) HoloApply(entityID string, force bool, stdout, stderr io.Writer) holo.ApplyResult {
-	return p.getEntity(entityID).Apply(force, stdout, stderr)
+	e, err := p.getEntity(entityID)
+	if err != nil {
+		return holo.ApplyError(1)
+	}
+	return e.Apply(force, stdout, stderr)
 }
 
 // HoloDiff returns reference files to compare the (expected state,
 // current state) of the given entity.
 func (p FilesPlugin) HoloDiff(entityID string, stderr io.Writer) (string, string) {
-	selectedEntity := p.getEntity(entityID)
+	selectedEntity, err := p.getEntity(entityID)
+	if err != nil {
+		return "", ""
+	}
 	new := selectedEntity.PathIn(p.provisionedDirectory())
 	cur := selectedEntity.PathIn(p.targetDirectory())
 	return new, cur
 }
 
-func (p FilesPlugin) getEntity(entityID string) *FilesEntity {
+func (p FilesPlugin) getEntity(entityID string) (*FilesEntity, error) {
 	entities := p.ScanRepo()
 	if entities == nil {
 		// some fatal error occurred - it was already
 		// reported, so just exit
-		os.Exit(1)
+		return nil, errors.New("")
 	}
 	var selectedEntity *FilesEntity
 	for _, entity := range entities {
@@ -85,9 +92,9 @@ func (p FilesPlugin) getEntity(entityID string) *FilesEntity {
 	}
 	if selectedEntity == nil {
 		fmt.Fprintf(os.Stderr, "!! unknown entity ID \"%s\"\n", entityID)
-		os.Exit(1)
+		return nil, errors.New("")
 	}
-	return selectedEntity
+	return selectedEntity, nil
 }
 
 // NewFilesPlugin creates an instance of FilesPlugin.
