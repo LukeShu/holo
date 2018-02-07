@@ -189,28 +189,3 @@ func ReadConfiguration() *Configuration {
 
 	return &result
 }
-
-var rootDirectory string
-
-func init() {
-	rootDirectory = os.Getenv("HOLO_ROOT_DIR")
-	if rootDirectory == "" {
-		rootDirectory = "/"
-	}
-}
-
-//RootDirectory returns the environment variable $HOLO_ROOT_DIR, or else the
-//default value "/".
-func RootDirectory() string {
-	return rootDirectory
-}
-
-func NewRuntime(id string) holo.Runtime {
-	return holo.Runtime{
-		APIVersion:      3,
-		RootDirPath:     RootDirectory(),
-		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(CachePath(), id),
-		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
-	}
-}
