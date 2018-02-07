@@ -18,30 +18,29 @@
 *
 *******************************************************************************/
 
-package entrypoint
+package impl
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/holocm/holo/cmd/holo/internal/impl"
 	"github.com/holocm/holo/cmd/holo/internal/output"
 )
 
 const (
-	optionApplyForce = iota
-	optionScanShort
-	optionScanPorcelain
+	OptionApplyForce = iota
+	OptionScanShort
+	OptionScanPorcelain
 )
 
-func commandApply(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
+func Apply(entities []*EntityHandle, options map[int]bool) (exitCode int) {
 	//ensure that we're the only Holo instance
-	if !impl.AcquireLockfile() {
+	if !AcquireLockfile() {
 		return 255
 	}
-	defer impl.ReleaseLockfile()
+	defer ReleaseLockfile()
 
-	withForce := options[optionApplyForce]
+	withForce := options[OptionApplyForce]
 	for _, entity := range entities {
 		entity.Apply(withForce)
 
@@ -53,9 +52,9 @@ func commandApply(entities []*impl.EntityHandle, options map[int]bool) (exitCode
 	return 0
 }
 
-func commandScan(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
-	isPorcelain := options[optionScanPorcelain]
-	isShort := options[optionScanShort]
+func Scan(entities []*EntityHandle, options map[int]bool) (exitCode int) {
+	isPorcelain := options[OptionScanPorcelain]
+	isShort := options[OptionScanShort]
 	for _, entity := range entities {
 		switch {
 		case isPorcelain:
@@ -70,13 +69,13 @@ func commandScan(entities []*impl.EntityHandle, options map[int]bool) (exitCode 
 	return 0
 }
 
-func commandDiff(entities []*impl.EntityHandle, options map[int]bool) (exitCode int) {
+func Diff(entities []*EntityHandle, options map[int]bool) (exitCode int) {
 	for _, entity := range entities {
-		buf, err := entity.RenderDiff()
+		dat, err := entity.RenderDiff()
 		if err != nil {
 			output.Errorf(output.Stderr, "cannot diff %s: %s", entity.Entity.EntityID(), err.Error())
 		}
-		os.Stdout.Write(buf)
+		os.Stdout.Write(dat)
 
 		os.Stderr.Sync()
 		output.Stdout.EndParagraph()

@@ -39,7 +39,7 @@ var version = "unknown"
 func Main() (exitCode int) {
 	//a command word must be given as first argument
 	if len(os.Args) < 2 {
-		commandHelp(os.Stderr)
+		help(os.Stderr)
 		return 2
 	}
 
@@ -48,24 +48,24 @@ func Main() (exitCode int) {
 	knownOpts := make(map[string]int)
 	switch os.Args[1] {
 	case "apply":
-		command = commandApply
-		knownOpts = map[string]int{"-f": optionApplyForce, "--force": optionApplyForce}
+		knownOpts = map[string]int{"-f": impl.OptionApplyForce, "--force": impl.OptionApplyForce}
+		command = impl.Apply
 	case "diff":
-		command = commandDiff
+		command = impl.Diff
 	case "scan":
-		command = commandScan
 		knownOpts = map[string]int{
-			"-s": optionScanShort, "--short": optionScanShort,
-			"-p": optionScanPorcelain, "--porcelain": optionScanPorcelain,
+			"-s": impl.OptionScanShort, "--short": impl.OptionScanShort,
+			"-p": impl.OptionScanPorcelain, "--porcelain": impl.OptionScanPorcelain,
 		}
+		command = impl.Scan
 	case "version", "--version":
 		fmt.Println(version)
 		return 0
 	case "help", "--help":
-		commandHelp(os.Stdout)
+		help(os.Stdout)
 		return 0
 	default:
-		commandHelp(os.Stderr)
+		help(os.Stderr)
 		return 2
 	}
 
@@ -119,7 +119,7 @@ func Main() (exitCode int) {
 	}) //end of WithCacheDirectory
 }
 
-func commandHelp(w io.Writer) {
+func help(w io.Writer) {
 	program := os.Args[0]
 	fmt.Fprintf(w, "Usage: %s apply [-f|--force] [selector ...]\n", program)
 	fmt.Fprintf(w, "   or: %s diff [selector ...]\n", program)
