@@ -75,7 +75,7 @@ type Configuration struct {
 	Plugins []*PluginHandle
 }
 
-//List config snippets in /etc/holorc.d.
+// List config snippets in /etc/holorc.d.
 func listConfigSnippets() ([]string, error) {
 	dirPath := filepath.Join(RootDirectory(), "etc/holorc.d")
 	dir, err := os.Open(dirPath)
@@ -153,6 +153,7 @@ func ReadConfiguration() *Configuration {
 			} else {
 				pluginID = pluginSpec
 			}
+
 			plugin, err := NewPluginHandle(pluginID, pluginArg, NewRuntime(pluginID), GetPlugin)
 
 			if err == nil {

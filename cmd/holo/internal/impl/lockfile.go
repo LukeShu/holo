@@ -58,7 +58,7 @@ func AcquireLockfile() bool {
 	return true
 }
 
-//ReleaseLockfile removes the lock file created by AcquireLockfile.
+// ReleaseLockfile removes the lock file created by AcquireLockfile.
 func ReleaseLockfile() {
 	err := lockFile.Close()
 	if err != nil {
