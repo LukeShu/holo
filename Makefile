@@ -47,7 +47,7 @@ test: check # just a synonym
 
 check: default
 check: check-gofmt
-check: check-golint
+#check: check-golint
 check: test/cov.html test/cov.func.txt
 .PHONY: check
 
