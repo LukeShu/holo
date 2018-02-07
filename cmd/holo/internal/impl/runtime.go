@@ -67,8 +67,8 @@ func init() {
 	}
 }
 
-//RootDirectory returns the environment variable $HOLO_ROOT_DIR, or else the
-//default value "/".
+// RootDirectory returns the environment variable $HOLO_ROOT_DIR, or
+// else the default value "/".
 func RootDirectory() string {
 	return rootDirectory
 }
