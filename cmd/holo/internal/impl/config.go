@@ -33,21 +33,6 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-var rootDirectory string
-
-func init() {
-	rootDirectory = os.Getenv("HOLO_ROOT_DIR")
-	if rootDirectory == "" {
-		rootDirectory = "/"
-	}
-}
-
-//RootDirectory returns the environment variable $HOLO_ROOT_DIR, or else the
-//default value "/".
-func RootDirectory() string {
-	return rootDirectory
-}
-
 func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error) {
 	if arg == nil {
 		_arg := filepath.Join(RootDirectory(), "usr/lib/holo/holo-"+id)
@@ -58,16 +43,6 @@ func GetPlugin(id string, arg *string, runtime holo.Runtime) (holo.Plugin, error
 		return nil, err
 	}
 	return plugin, nil
-}
-
-func NewRuntime(id string) holo.Runtime {
-	return holo.Runtime{
-		APIVersion:      3,
-		RootDirPath:     RootDirectory(),
-		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(CachePath(), id),
-		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
-	}
 }
 
 //Configuration contains the parsed contents of /etc/holorc.
@@ -213,4 +188,29 @@ func ReadConfiguration() *Configuration {
 	}
 
 	return &result
+}
+
+var rootDirectory string
+
+func init() {
+	rootDirectory = os.Getenv("HOLO_ROOT_DIR")
+	if rootDirectory == "" {
+		rootDirectory = "/"
+	}
+}
+
+//RootDirectory returns the environment variable $HOLO_ROOT_DIR, or else the
+//default value "/".
+func RootDirectory() string {
+	return rootDirectory
+}
+
+func NewRuntime(id string) holo.Runtime {
+	return holo.Runtime{
+		APIVersion:      3,
+		RootDirPath:     RootDirectory(),
+		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
+		CacheDirPath:    filepath.Join(CachePath(), id),
+		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
+	}
 }
