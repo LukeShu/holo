@@ -29,7 +29,10 @@ import (
 	"github.com/holocm/holo/lib/holo"
 )
 
-var cachePath string
+var (
+	rootDir   string
+	cachePath string
+)
 
 //WithCacheDirectory executes the worker function after having set up a cache
 //directory, and ensures that the cache directory is cleaned up afterwards.
@@ -58,19 +61,17 @@ func CachePath() string {
 	return cachePath
 }
 
-var rootDirectory string
-
 func init() {
-	rootDirectory = os.Getenv("HOLO_ROOT_DIR")
-	if rootDirectory == "" {
-		rootDirectory = "/"
+	rootDir = os.Getenv("HOLO_ROOT_DIR")
+	if rootDir == "" {
+		rootDir = "/"
 	}
 }
 
 // RootDirectory returns the environment variable $HOLO_ROOT_DIR, or
 // else the default value "/".
 func RootDirectory() string {
-	return rootDirectory
+	return rootDir
 }
 
 func NewRuntime(id string) holo.Runtime {
@@ -78,7 +79,7 @@ func NewRuntime(id string) holo.Runtime {
 		APIVersion:      3,
 		RootDirPath:     RootDirectory(),
 		ResourceDirPath: filepath.Join(RootDirectory(), "usr/share/holo/"+id),
-		CacheDirPath:    filepath.Join(CachePath(), id),
+		CacheDirPath:    filepath.Join(cachePath, id),
 		StateDirPath:    filepath.Join(RootDirectory(), "var/lib/holo/"+id),
 	}
 }
